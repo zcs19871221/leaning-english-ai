@@ -1,25 +1,20 @@
-name: Publish Package to npmjs
-on:
-  release:
-    types: [published]
-jobs:
-  build:
-    runs-on: ubuntu-latest
-    permissions:
-      contents: read
-      id-token: write
-    steps:
-      - uses: actions/checkout@v4
-      # Setup .npmrc file to publish to npm
-      - uses: actions/setup-node@v4
-        with:
-          node-version: '20.x'
-          registry-url: 'https://registry.npmjs.org'
-      - run: npm config set strict-ssl false
-      - run: npm ci
-      - run: npm run build
-      - run: npm publish --provenance --access public
-        env:
-          NODE_AUTH_TOKEN: ${{ secrets.NPM }}
-      - run: npm run report
-      - uses: coverallsapp/github-action@v2
+# Copilot 英语学习指南
+
+与我聊天时，请务必遵循以下规则：
+
+- 对于讨论到的每个英语单词或短语，请提供：
+    - 国际音标 (IPA)
+    - 至少一个例句
+    - 清晰简洁的含义/定义
+    - 词性（如果在句子中，标注在这个句子中的词性）
+
+- 当我输入一个较长的英语句子时：
+    - 提供完整的中文翻译
+    - 简要分析语法（主要结构、关键从句等）
+    - 为关键词推荐替代单词或短语（同义词）
+
+- 请清晰地组织您的答案，使用项目符号或段落来概括每个要求。
+
+- 如果我的要求含糊不清，请在回答之前要求澄清。
+
+这些规则适用于此工作区中的所有英语学习对话。
