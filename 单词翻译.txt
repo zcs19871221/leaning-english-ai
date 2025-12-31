@@ -1,455 +1,745 @@
+// ...existing code...
 considerate  
 /kənˈsɪdərət/  
 形容词：体贴的，考虑周到的  
-例句：She is always considerate of others’ feelings.  
-她总是体贴别人的感受。
+例句：It was considerate of you to call and check in.  
+你打电话来问候，真是很体贴。
 
 considerable  
 /kənˈsɪdərəbl/  
 形容词：相当大的，可观的  
-例句：The project required a considerable amount of time.  
-这个项目需要相当多的时间。
+例句：She has considerable experience in React and TypeScript.  
+她在 React 和 TypeScript 方面有相当丰富的经验。
 
 initiative  
 /ɪˈnɪʃətɪv/  
-名词：主动性，倡议  
-例句：He showed great initiative in solving the problem.  
-他在解决问题时表现出了极大的主动性。
+名词：主动性；倡议；主动采取的行动  
+例句：Take the initiative and propose a plan.  
+主动一点，提出一个计划。
 
 initiate  
 /ɪˈnɪʃieɪt/  
-动词：开始，发起  
-例句：They decided to initiate a new project.  
-他们决定启动一个新项目。
+动词：发起；开始；启动  
+例句：They initiated an internal refactor project.  
+他们发起了一个内部重构项目。
+
+initial  
+/ɪˈnɪʃl/  
+形容词：最初的，初始的  
+名词：首字母  
+例句：The initial version was simple but worked.  
+最初版本很简单，但能用。
 
 promenade  
-/ˌprɒməˈnɑːd/  
-名词：散步，散步的地方  
-例句：They took a walk along the promenade by the sea.  
-他们沿着海边的散步道散步。
+/ˌprɒməˈnɑːd/（英）/ˌprɑːməˈnɑːd/（美）  
+名词：散步道；（悠闲）散步  
+动词：遛弯；散步  
+例句：They went for a promenade along the seafront.  
+他们沿着海滨散步。
 
 panoramic  
 /ˌpænəˈræmɪk/  
-形容词：全景的，概览的  
-例句：The hotel offers a panoramic view of the city.  
-这家酒店可以看到城市的全景。
+形容词：全景的；全景式的  
+例句：The rooftop has a panoramic view of the city.  
+屋顶可以看到城市全景。
 
 lemonade  
 /ˌleməˈneɪd/  
-名词：柠檬水  
-例句：She made a pitcher of lemonade for the party.  
-她为聚会做了一壶柠檬水。
+名词：柠檬水；柠檬汽水  
+例句：Let’s grab a lemonade—it’s really hot today.  
+我们去买杯柠檬水吧，今天太热了。
 
 predator  
 /ˈpredətə(r)/  
-名词：捕食者，掠食动物  
-例句：The lion is a powerful predator.  
-狮子是一种强大的捕食者。
+名词：捕食者；掠食动物；（引申）掠夺者  
+例句：Wolves are predators that hunt in packs.  
+狼是群体狩猎的捕食者。
 
 predate  
 /ˌpriːˈdeɪt/  
-动词：早于，先于  
-例句：These fossils predate the dinosaurs.  
-这些化石比恐龙还早。
+动词：早于；先于  
+例句：This tradition predates modern tourism.  
+这个传统早于现代旅游业。
 
 prey  
 /preɪ/  
-名词：猎物，受害者  
-例句：The eagle swooped down on its prey.  
-老鹰俯冲下来捕捉猎物。
+名词：猎物；受害者  
+动词：捕食；（prey on/upon）伤害/折磨/侵扰  
+例句：Small fish are easy prey for larger ones.  
+小鱼很容易成为大鱼的猎物。
 
 habitat  
 /ˈhæbɪtæt/  
-名词：栖息地，生活环境  
-例句：The panda’s natural habitat is the bamboo forest.  
-熊猫的自然栖息地是竹林。
+名词：栖息地；（动植物）生活环境  
+例句：Protecting natural habitats helps wildlife survive.  
+保护自然栖息地有助于野生动物生存。
 
 inhabit  
 /ɪnˈhæbɪt/  
-动词：居住于，栖息于  
-例句：Many species inhabit the rainforest.  
-许多物种居住在雨林中。
+动词：居住于；栖息于  
+例句：Thousands of people inhabit the valley.  
+有成千上万的人居住在这座山谷里。
 
 habitation  
 /ˌhæbɪˈteɪʃn/  
-名词：居住，住所  
-例句：The house was not fit for human habitation.  
-这房子不适合人居住。
+名词：居住；住所（较正式）  
+例句：The building is unfit for human habitation.  
+这栋楼不适合人居住。
 
 inhabitant  
 /ɪnˈhæbɪtənt/  
-名词：居民，住户  
-例句：The city’s inhabitants are very friendly.  
-这座城市的居民非常友好。
+名词：居民；栖居者  
+例句：The island has fewer than 500 inhabitants.  
+这个岛的居民不到 500 人。
 
 epidemic  
 /ˌepɪˈdemɪk/  
-名词：流行病，传染病  
-例句：The flu epidemic spread quickly through the town.  
-流感疫情迅速在镇上传播。
+名词：流行病；（引申）大规模蔓延  
+形容词：流行性的  
+例句：They worked to stop the epidemic from spreading.  
+他们努力阻止疫情扩散。
 
 endemic  
 /enˈdemɪk/  
-形容词：地方性的，某地特有的  
-例句：Malaria is endemic in some tropical regions.  
-疟疾在一些热带地区是地方性疾病。
+形容词：地方性的；（某地）特有的  
+名词：地方病  
+例句：The disease is endemic in some tropical areas.  
+这种疾病在一些热带地区是地方性流行的。
 
 eternal  
 /ɪˈtɜːnl/  
-形容词：永恒的，不朽的  
-例句：They promised each other eternal love.  
-他们彼此许下永恒的爱。
+形容词：永恒的；永久的  
+例句：Nothing stays new forever—nothing is eternal.  
+没有东西能永远保持新——没有什么是永恒的。
 
 ethereal  
-/ɪˈθɪəriəl/  
-形容词：轻飘的，超凡的  
-例句：The music had an ethereal quality.  
-这音乐有一种空灵的特质。
+/ɪˈθɪəriəl/（英）/ɪˈθɪriəl/（美）  
+形容词：空灵的；飘渺的；超凡脱俗的  
+例句：She has an ethereal voice.  
+她的嗓音空灵。
 
 tuft  
 /tʌft/  
-名词：一簇，一丛  
-例句：A tuft of grass grew by the rock.  
-岩石旁长着一丛草。
+名词：（毛发/草等）一簇，一撮  
+例句：A tuft of grass grew through the cracks.  
+一簇草从缝隙里长出来。
 
 turf  
-/tɜːf/  
-名词：草皮，地盘  
-例句：The players ran across the turf.  
-球员们在草皮上奔跑。
+/tɜːf/（英）/tɝːf/（美）  
+名词：草皮；草地；（引申）地盘/势力范围  
+例句：Kids were playing on the turf.  
+孩子们在草地上玩。
 
 board  
-/bɔːd/  
-名词：板，董事会  
-例句：He nailed the board to the wall.  
-他把木板钉在墙上。
+/bɔːd/（英）/bɔːrd/（美）  
+名词：木板；（委员会）董事会/理事会  
+动词：登上（车/船/飞机）；寄宿  
+例句：We boarded the train at 8 a.m.  
+我们早上 8 点上了火车。
 
 aboard  
-/əˈbɔːd/  
-副词/介词：在船（车、飞机）上  
-例句：All passengers must be aboard before departure.  
-所有乘客必须在出发前上船。
+/əˈbɔːd/（英）/əˈbɔːrd/（美）  
+副词/介词：在（车/船/飞机）上；上（车/船/飞机）  
+例句：All passengers are now aboard.  
+所有乘客现在都已登机/登船。
 
 abroad  
 /əˈbrɔːd/  
-副词：在国外，到国外  
-例句：She studied abroad for two years.  
-她在国外学习了两年。
+副词：在国外；到国外  
+例句：He wants to work abroad after graduation.  
+他毕业后想去国外工作。
 
 carriage  
 /ˈkærɪdʒ/  
-名词：马车，车厢  
-例句：The bride arrived in a horse-drawn carriage.  
-新娘乘坐马车到达。
+名词：马车；（火车）车厢；（姿态）举止  
+例句：We sat in the second carriage.  
+我们坐在第二节车厢。
 
 cabbage  
 /ˈkæbɪdʒ/  
-名词：卷心菜  
-例句：She bought a cabbage at the market.  
-她在市场买了一个卷心菜。
+名词：卷心菜；包菜  
+例句：Add shredded cabbage to the salad.  
+在沙拉里加点切丝的卷心菜。
 
 cottage  
-/ˈkɒtɪdʒ/  
-名词：小屋，村舍  
-例句：They spent the weekend in a cottage by the lake.  
-他们在湖边的小屋度过了周末。
+/ˈkɒtɪdʒ/（英）/ˈkɑːtɪdʒ/（美）  
+名词：小屋；乡间小别墅  
+例句：They rented a cottage for the weekend.  
+他们租了间小屋过周末。
 
 aquatic  
 /əˈkwætɪk/  
-形容词：水生的，水上的  
-例句：Aquatic plants grow in ponds and lakes.  
-水生植物生长在池塘和湖泊中。
+形容词：水生的；水中的  
+例句：Aquatic plants grow near the surface.  
+水生植物长在水面附近。
 
 equine  
 /ˈekwaɪn/  
-形容词：马的，似马的  
-例句：She works at an equine therapy center.  
-她在一个马疗中心工作。
+形容词：马的；与马有关的  
+例句：She specializes in equine medicine.  
+她专攻马科医学。
 
 boost  
 /buːst/  
-动词：促进，提高  
-例句：Exercise can boost your energy levels.  
-锻炼可以提高你的能量水平。
+动词：促进；提高；增强  
+名词：提升；促进  
+例句：A short walk can boost your mood.  
+散步一会儿能改善心情。
 
 boast  
-/bəʊst/  
-动词：自夸，吹嘘  
-例句：He likes to boast about his achievements.  
-他喜欢吹嘘自己的成就。
+/bəʊst/（英）/boʊst/（美）  
+动词：吹嘘；夸口；以……自豪  
+名词：吹嘘；夸耀的事  
+例句：He never boasts about his achievements.  
+他从不吹嘘自己的成就。
 
 scrub  
 /skrʌb/  
-动词：用力擦洗  
-例句：She scrubbed the floor clean.  
-她把地板擦干净了。
+动词：用力擦洗；刷  
+名词：灌木丛；（非正式）菜鸟/不行的人（语境敏感）  
+例句：Scrub the pan with hot water.  
+用热水把锅刷干净。
 
 scurry  
 /ˈskʌri/  
-动词：急匆匆地跑  
-例句：The mice scurried across the room.  
-老鼠急匆匆地穿过房间。
+动词：急匆匆地跑；小碎步快走  
+例句：People scurried for shelter when it started raining.  
+下雨时人们急忙跑去躲雨。
 
 succumb  
 /səˈkʌm/  
-动词：屈服，死于  
-例句：He succumbed to temptation.  
-他屈服于诱惑。
+动词：屈服；不敌；（succumb to）扛不住（诱惑/压力/疾病等）  
+例句：He succumbed to the pressure and quit.  
+他扛不住压力，辞职了。
 
 spirit  
 /ˈspɪrɪt/  
-名词：精神，灵魂  
-例句：Her spirit is strong despite difficulties.  
-尽管有困难，她的精神依然坚强。
+名词：精神；灵魂；情绪；烈酒  
+例句：Team spirit matters in a big project.  
+在大型项目中团队精神很重要。
 
 sprite  
 /spraɪt/  
-名词：小精灵，妖精  
-例句：A sprite danced in the forest.  
-一只小精灵在森林里跳舞。
+名词：小精灵；仙子  
+例句：The story is about a forest sprite.  
+这个故事讲的是一只森林小精灵。
 
 indulging  
 /ɪnˈdʌldʒɪŋ/  
-动词（现在分词）：沉溺，放纵  
-例句：He is indulging in his favorite hobby.  
-他正沉溺于自己喜欢的爱好。
+现在分词/形容词：沉溺于；放纵的（语境决定）  
+例句：Stop indulging in late-night snacks.  
+别再沉迷于夜宵了。
 
 undulating  
-/ˈʌndjəleɪtɪŋ/  
-形容词/动词（现在分词）：起伏的，波动的  
-例句：The undulating hills stretched for miles.  
-起伏的山丘绵延数英里。
+/ˈʌndjəleɪtɪŋ/（英）/ˈʌndʒəleɪtɪŋ/（美）  
+形容词：起伏的；波浪状的  
+例句：We drove through undulating hills.  
+我们开车穿过起伏的山丘。
 
 flip  
 /flɪp/  
-动词：快速翻动  
-例句：She flipped the page of the book.  
-她快速翻了一页书。
+动词：快速翻转；翻动  
+名词：翻转；轻弹  
+例句：Flip the pancake and cook the other side.  
+把煎饼翻面，把另一面煎熟。
 
 flap  
 /flæp/  
-动词：拍打，摆动  
-例句：The bird flapped its wings.  
-鸟拍打着翅膀。
+动词：拍打；摆动  
+名词：拍打声；（信封）封口盖；（英）小故障/慌乱（语境）  
+例句：A flag flapped in the wind.  
+旗子在风中飘动。
 
 captivate  
 /ˈkæptɪveɪt/  
-动词：迷住，吸引  
-例句：The performance captivated the audience.  
-表演吸引了观众。
+动词：迷住；使着迷；强烈吸引  
+例句：The speaker captivated the audience.  
+演讲者把观众深深吸引住了。
 
 captive  
 /ˈkæptɪv/  
-名词/形容词：俘虏，被俘的  
-例句：The soldiers were held captive.  
-士兵们被俘虏了。
+名词：俘虏  
+形容词：被俘的；受控制的  
+例句：The bird was born in captivity.  
+这只鸟是在人工圈养环境下出生的。
 
 capture  
 /ˈkæptʃə(r)/  
-动词：捕获，俘获  
-例句：The police captured the suspect.  
-警方抓获了嫌疑人。
+动词：捕获；俘获；拍摄到；夺取  
+名词：捕获；拍摄的画面  
+例句：He captured the moment on his phone.  
+他用手机拍下了那一刻。
 
 lag  
 /læɡ/  
-动词：落后，滞后  
-例句：He began to lag behind the others.  
-他开始落在其他人后面。
+动词：落后；滞后；（计算机）卡顿  
+名词：延迟；落后  
+例句：The video lags when the network is slow.  
+网络慢的时候视频会卡。
 
 lug  
 /lʌɡ/  
-动词：吃力地搬运  
-例句：She lugged the heavy suitcase upstairs.  
-她吃力地把沉重的行李箱搬上楼。
+动词：吃力地拖/搬（重物）  
+例句：He lugged the suitcase up the stairs.  
+他吃力地把箱子搬上楼。
 
 tug  
 /tʌɡ/  
-动词：用力拉，拖  
-例句：He tugged at the door, but it wouldn’t open.  
-他用力拉门，但门打不开。
+动词：用力拉；猛拽  
+名词：猛拉；拖船（tugboat）  
+例句：She tugged at my sleeve to get my attention.  
+她拽了拽我的袖子引起我注意。
 
 royal  
 /ˈrɔɪəl/  
-形容词：王室的，皇家的  
-例句：They attended a royal wedding.  
-他们参加了一场皇家婚礼。
+形容词：王室的；皇家的  
+例句：They visited a royal palace.  
+他们参观了王宫。
 
 loyal  
 /ˈlɔɪəl/  
-形容词：忠诚的  
-例句：He is loyal to his friends.  
-他对朋友很忠诚。
+形容词：忠诚的；忠实的  
+例句：He’s loyal to his team.  
+他对团队很忠诚。
 
 rust  
 /rʌst/  
-名词/动词：铁锈，生锈  
-例句：The metal gate was covered in rust.  
-铁门上满是铁锈。
+名词：铁锈  
+动词：生锈  
+例句：The bike chain started to rust.  
+自行车链条开始生锈了。
+
+russet  
+/ˈrʌsɪt/  
+形容词：赤褐色的  
+名词：赤褐色；（常见）褐皮苹果/褐皮土豆（语境）  
+例句：The leaves turned russet in autumn.  
+秋天叶子变成了赤褐色。
+
+rustle  
+/ˈrʌsl/  
+动词：发出沙沙声  
+名词：沙沙声  
+例句：I heard leaves rustle behind me.  
+我听到身后树叶沙沙作响。
 
 lush  
 /lʌʃ/  
-形容词：茂盛的，葱郁的  
-例句：The garden was full of lush plants.  
-花园里满是茂盛的植物。
+形容词：郁郁葱葱的；茂盛的；（引申）奢华的  
+名词（非正式）：酒鬼  
+例句：They walked through lush forest.  
+他们穿行在郁郁葱葱的森林里。
+
+lash  
+/læʃ/  
+动词：鞭打；猛烈抨击；（风雨）猛烈抽打  
+名词：睫毛；鞭子；捆绑带  
+例句：The report lashed the company for poor safety.  
+报告猛烈批评了该公司的安全问题。
 
 anticipate  
 /ænˈtɪsɪpeɪt/  
-动词：预期，期待  
-例句：They anticipate a rise in prices.  
-他们预期价格会上涨。
+动词：预期；预料；期待  
+例句：We anticipate delays during the holiday season.  
+我们预计假期期间会有延误。
 
 participate  
-/pɑːˈtɪsɪpeɪt/  
-动词：参加，参与  
-例句：She likes to participate in sports.  
-她喜欢参加体育运动。
+/pɑːˈtɪsɪpeɪt/（英）/pɑːrˈtɪsɪpeɪt/（美）  
+动词：参加；参与（participate in）  
+例句：Everyone is encouraged to participate.  
+鼓励大家都参与。
 
 unite  
 /juˈnaɪt/  
-动词：联合，团结  
-例句：The two groups united to form a team.  
-两个小组联合组成了一个团队。
+动词：联合；团结；合并  
+例句：The two teams united to solve the issue.  
+两个团队联合起来解决问题。
 
 unit  
 /ˈjuːnɪt/  
-名词：单位，单元  
-例句：The apartment has three units.  
-这套公寓有三个单元。
+名词：单位；单元；部件；（组织中的）小组  
+例句：The course is divided into six units.  
+这门课分成六个单元。
 
 coach  
-/kəʊtʃ/  
-名词：教练，长途汽车  
-例句：The football coach gave a speech.  
-足球教练发表了讲话。
+/kəʊtʃ/（英）/koʊtʃ/（美）  
+名词：教练；长途客车  
+动词：指导；辅导  
+例句：She coached me for the interview.  
+她辅导我准备面试。
 
 couch  
 /kaʊtʃ/  
-名词：长沙发  
-例句：He lay down on the couch to rest.  
-他躺在长沙发上休息。
+名词：沙发  
+动词（较正式）：用某种措辞表达（couch in…）  
+例句：He fell asleep on the couch.  
+他在沙发上睡着了。
 
 avenue  
 /ˈævənjuː/  
-名词：林荫大道，大街  
-例句：They walked along the busy avenue.  
-他们沿着繁忙的大街散步。
+名词：大街；林荫大道；途径/渠道  
+例句：We’re exploring new avenues for growth.  
+我们在探索新的增长途径。
 
 venue  
 /ˈvenjuː/  
-名词：场地，会场  
-例句：The concert will be held at a new venue.  
-音乐会将在一个新场地举行。
+名词：场地；会场；举办地点  
+例句：They changed the venue at the last minute.  
+他们临时更换了场地。
 
 convention  
 /kənˈvenʃn/  
-名词：大会，惯例  
-例句：They attended an international convention.  
-他们参加了一个国际大会。
+名词：大会；会议；习俗；（技术/写作）约定  
+例句：Naming conventions keep the codebase consistent.  
+命名约定能让代码库保持一致。
 
 vibe  
 /vaɪb/  
-名词：氛围，感觉  
-例句：This café has a friendly vibe.  
-这家咖啡馆有一种友好的氛围。
+名词（非正式）：氛围；感觉；气质  
+例句：This place has a relaxed vibe.  
+这地方氛围很放松。
 
 vibrant  
 /ˈvaɪbrənt/  
-形容词：充满活力的，鲜艳的  
-例句：The city is vibrant at night.  
-这座城市在夜晚充满活力。
+形容词：充满活力的；鲜艳的  
+例句：She moved to a vibrant neighborhood.  
+她搬到了一个很有活力的社区。
 
 vibrance  
 /ˈvaɪbrəns/  
-名词：活力，鲜明  
-例句：The vibrance of the colors was impressive.  
-这些颜色的鲜艳令人印象深刻。
+名词：活力；（色彩）鲜艳度  
+例句：Increase the vibrance to make the colors pop.  
+把鲜艳度调高一点，让颜色更跳。
 
 plank  
 /plæŋk/  
-名词：厚木板  
-例句：He walked across the plank over the stream.  
-他走过小溪上的木板。
+名词：厚木板；（健身）平板支撑  
+例句：Hold a plank for 30 seconds.  
+做 30 秒平板支撑。
 
 flank  
 /flæŋk/  
-名词：侧面，侧翼  
-例句：The soldiers attacked from the left flank.  
-士兵们从左侧翼发起了进攻。
+名词：侧面；侧翼  
+动词：位于……侧面；侧面包抄  
+例句：Tall trees flanked the road.  
+道路两旁长着高大的树。
 
 pedal  
 /ˈpedl/  
-名词/动词：踏板，踩踏板  
-例句：She pressed the pedal to accelerate.  
-她踩下踏板加速。
+名词：踏板  
+动词：踩踏板；骑自行车  
+例句：He pedaled hard up the hill.  
+他用力踩踏板上坡。
 
 paddle  
 /ˈpædl/  
-名词/动词：桨，划桨  
-例句：He used a paddle to row the boat.  
-他用桨划船。
+名词：桨  
+动词：划桨；用桨划（船）  
+例句：We paddled across the lake.  
+我们划船穿过湖面。
 
 dusk  
 /dʌsk/  
-名词：黄昏，傍晚  
-例句：The streetlights came on at dusk.  
-黄昏时分街灯亮了。
+名词：黄昏；傍晚  
+例句：We arrived at dusk.  
+我们在黄昏时到达。
 
 dust  
 /dʌst/  
-名词/动词：灰尘，擦去灰尘  
-例句：She wiped the dust off the shelf.  
-她擦掉了架子上的灰尘。
+名词：灰尘  
+动词：除尘；撒粉  
+例句：Please dust the shelves once a week.  
+请每周给架子除一次尘。
+
+dawn  
+/dɔːn/  
+名词：黎明；破晓  
+动词：逐渐明白（dawn on）  
+例句：It finally dawned on me what he meant.  
+我终于明白他是什么意思了。
 
 adore  
 /əˈdɔː(r)/  
-动词：热爱，非常喜欢  
-例句：Children adore chocolate.  
-孩子们非常喜欢巧克力。
+动词：热爱；非常喜欢  
+例句：I adore this movie.  
+我超喜欢这部电影。
 
 adorn  
 /əˈdɔːn/  
-动词：装饰，点缀  
-例句：She adorned her room with flowers.  
-她用鲜花装饰了房间。
+动词：装饰；点缀（较书面）  
+例句：The hall was adorned with flowers.  
+大厅用鲜花装饰着。
 
 bow  
-/baʊ/（鞠躬，弯腰，动词）  
-鞠躬，弯腰  
-例句：He bowed politely to the audience.  
-他向观众礼貌地鞠躬。
-
-/bəʊ/（弓，蝴蝶结，名词）  
-弓，蝴蝶结  
-例句：She tied her hair with a pink bow.  
-她用粉色蝴蝶结扎头发。
+/baʊ/（动词：鞠躬） /bəʊ/（名词：弓；蝴蝶结；船首= /baʊ/）  
+名词/动词：弓；蝴蝶结；鞠躬（多义）  
+例句：He bowed to the audience.  
+他向观众鞠躬。
 
 bowl  
-/bəʊl/（名词）  
-碗，钵  
-例句：She ate soup from a large bowl.  
-她用一个大碗喝汤。
+/bəʊl/（英）/boʊl/（美）  
+名词：碗；（保龄球/板球）投球  
+动词：投球；打保龄球  
+例句：She ate cereal from a bowl.  
+她用碗吃麦片。
 
 spire  
 /ˈspaɪə(r)/  
-名词：尖顶，塔尖（常指教堂、建筑物等的顶端）  
-例句：The church has a tall spire.  
-这座教堂有一个高高的尖顶。
+名词：尖塔；塔尖  
+例句：You can see the cathedral spire from here.  
+从这里能看到大教堂的尖塔。
 
 spine  
 /spaɪn/  
-名词：脊柱，书脊，刺  
-例句：The human spine supports the body.  
-人的脊柱支撑着身体。
+名词：脊柱；书脊；刺  
+例句：The book’s title is printed on the spine.  
+书名印在书脊上。
 
 strew  
 /struː/  
-动词：撒，散布  
-例句：She strewed rose petals on the bed.  
-她把玫瑰花瓣撒在床上。
+动词：撒；散落（较书面）  
+例句：The path was strewn with leaves.  
+小路上散落着落叶。
+
+stew  
+/stjuː/（英）/stuː/（美）  
+名词：炖菜  
+动词：炖；（情绪）闷想、焦虑（let it stew）  
+例句：They made a beef stew for dinner.  
+他们晚餐做了牛肉炖菜。
 
 straw  
-/strɔː/  
-名词：稻草，吸管  
-例句：He drank juice through a straw.  
-他用吸管喝果汁。
+/strɔː/（英）/strɔː, strɑː/（美）  
+名词：稻草；吸管  
+例句：Can I get a straw, please?  
+请给我一根吸管好吗？
 
+captain  
+/ˈkæptɪn/  
+名词：队长；船长；机长  
+例句：The captain announced a short delay.  
+机长宣布会短暂延误。
+
+caption  
+/ˈkæpʃn/  
+名词：图片说明文字；（视频）字幕（常指可开关的字幕/CC）  
+动词：给……加说明文字/字幕  
+例句：Add a caption to the photo.  
+给这张照片加一句说明文字。
+
+sector  
+/ˈsektə(r)/  
+名词：部门；行业；领域；（几何）扇形  
+例句：He works in the tech sector.  
+他在科技行业工作。
+
+section  
+/ˈsekʃn/  
+名词：部分；章节；区段  
+动词：把……分成段；做剖面/切片（较专业）  
+例句：Read the first section carefully.  
+仔细读第一部分。
+
+torch  
+/tɔːtʃ/（英）/tɔːrtʃ/（美）  
+名词：火炬；（英）手电筒  
+动词：烧毁  
+例句：Bring a torch—it’ll be dark outside.  
+带个手电筒，外面会很黑。
+
+torture  
+/ˈtɔːtʃə(r)/  
+名词：折磨；酷刑  
+动词：折磨；拷打  
+例句：Waiting without updates is torture.  
+等着却没有任何进展简直是折磨。
+
+wonder  
+/ˈwʌndə(r)/  
+动词：想知道；感到惊奇  
+名词：惊奇；奇迹  
+例句：I wonder if they’re hiring.  
+我想知道他们是不是在招人。
+
+wander  
+/ˈwɒndə(r)/（英）/ˈwɑːndər/（美）  
+动词：闲逛；漫步；走神  
+名词：闲逛；漫游（较少）  
+例句：We wandered around the old town.  
+我们在老城里随便逛了逛。
+
+concentric  
+/kənˈsentrɪk/  
+形容词：同心的（共享同一中心）  
+例句：The circles are concentric.  
+这些圆是同心圆。
+
+concentrate  
+/ˈkɒnsntreɪt/（英）/ˈkɑːnsntreɪt/（美）  
+动词：集中；专注；浓缩  
+名词：浓缩物  
+例句：Try to concentrate on one task at a time.  
+尽量一次只专注做一件事。
+
+stump  
+/stʌmp/  
+名词：树桩；（引申）残肢；（美）竞选演说台/巡回竞选（语境）  
+动词：难住；把……问倒  
+例句：That question stumped me.  
+那个问题把我问倒了。
+
+stamp  
+/stæmp/  
+名词：邮票；印章；跺脚  
+动词：盖章；踩踏；压印  
+例句：Please stamp and sign here.  
+请在这里盖章并签字。
+
+capitan  
+/ˈkæpɪtæn/（多为专名/外来语读法变化大）  
+名词：常见于专名/外来语（不是标准英语常用词）  
+例句：El Capitan is a famous rock formation in Yosemite.  
+“酋长岩”（El Capitan）是优胜美地著名的岩体。
+
+recline  
+/rɪˈklaɪn/  
+动词：斜躺；（椅背）后仰  
+例句：You can recline the seat.  
+你可以把座椅靠背放倒。
+
+decline  
+/dɪˈklaɪn/  
+动词：下降；衰退；婉拒  
+名词：下降；衰退  
+例句：Sales declined sharply last quarter.  
+上个季度销量大幅下降。
+
+incline  
+/ɪnˈklaɪn/  
+动词：倾斜；（道路）上坡；（be inclined to）倾向于  
+名词：斜坡  
+例句：The path inclines gradually.  
+这条小路逐渐上坡。
+
+scramble  
+/ˈskræmbl/  
+动词：攀爬；争抢；匆忙行动；炒（蛋）  
+名词：争抢；攀爬；炒蛋  
+例句：We scrambled up the rocks.  
+我们手脚并用爬上岩石。
+
+ramble  
+/ˈræmbl/  
+动词：漫步；闲逛；（讲话/文章）跑题  
+名词：漫步；随笔式闲谈  
+例句：He rambled on for hours.  
+他东拉西扯说了好几个小时。
+
+hammock  
+/ˈhæmək/  
+名词：吊床  
+例句：He relaxed in a hammock by the sea.  
+他在海边的吊床上放松。
+
+hummock  
+/ˈhʌmək/  
+名词：小圆丘；（沼泽/冰面等）隆起的小土包  
+例句：They walked across a field of grassy hummocks.  
+他们走过一片长满草的一个个小土丘。
+
+forage  
+/ˈfɒrɪdʒ/（英）/ˈfɔːrɪdʒ/（美）  
+动词：觅食；搜寻  
+名词：饲草；（动物）觅食物  
+例句：Bears forage for berries in summer.  
+熊在夏天会去找浆果吃。
+
+foliage  
+/ˈfəʊliɪdʒ/（英）/ˈfoʊliɪdʒ/（美）  
+名词：树叶；叶丛；（总体）叶子/植被  
+例句：The autumn foliage is beautiful.  
+秋天的红叶很美。
+
+forge  
+/fɔːdʒ/（英）/fɔːrdʒ/（美）  
+动词：锻造；伪造；艰难建立（forge ahead/forge a path）  
+名词：锻炉；锻造厂  
+例句：They forged a strong partnership.  
+他们建立了牢固的合作关系。
+
+swamp  
+/swɒmp/（英）/swɑːmp/（美）  
+名词：沼泽  
+动词：淹没；（工作等）压得喘不过气（be swamped）  
+例句：I’m swamped with work this week.  
+我这周工作多到忙不过来。
+
+swath  
+/swɒθ/（英）/swɑːθ/（美）  
+名词：（一长条）带状区域；（割下的）一长条作物  
+例句：A swath of forest was destroyed by the fire.  
+一大片带状森林被大火毁掉了。
+
+clamp  
+/klæmp/  
+名词：夹具；夹子  
+动词：夹紧；钳制  
+例句：Clamp the cable so it doesn’t move.  
+把线缆夹紧，别让它动。
+
+clump  
+/klʌmp/  
+名词：（树/草/人等）一丛；一团  
+动词：沉重地走；聚成团  
+例句：A clump of trees stands near the river.  
+河边有一丛树。
+
+crucial  
+/ˈkruːʃl/  
+形容词：至关重要的；关键的  
+例句：Testing is crucial for reliability.  
+测试对可靠性至关重要。
+
+cruel  
+/ˈkruːəl/  
+形容词：残忍的；残酷的  
+例句：It was cruel to leave him out on purpose.  
+故意把他排除在外是很残忍的。
+
+hospitable  
+/hɒˈspɪtəbl/（英）/hɑːˈspɪtəbl/（美）  
+形容词：好客的；热情接待的；（环境）适宜的  
+例句：People here are very hospitable.  
+这里的人非常好客。
+
+hostile  
+/ˈhɒstaɪl/（英）/ˈhɑːstl/（美）  
+形容词：敌对的；充满敌意的；不友好的  
+例句：He faced hostile questions from the press.  
+他面对媒体充满敌意的提问。
+
+tempt  
+/tempt/  
+动词：诱惑；引诱；使很想（做某事）  
+例句：Don’t tempt me with dessert.  
+别拿甜点诱惑我。
+
+attempt  
+/əˈtempt/  
+动词：尝试；企图  
+名词：尝试；企图  
+例句：She attempted to fix the bug.  
+她尝试修复这个 bug。
+
+lavender  
+/ˈlævəndə(r)/  
+名词：薰衣草；淡紫色  
+形容词：淡紫色的  
+例句：The room is painted lavender.  
+房间刷成了淡紫色。
+
+vanilla  
+/vəˈnɪlə/  
+名词：香草；香草味  
+形容词（引申）：普通的；基础款的  
+例句：Let’s start with a vanilla React setup.  

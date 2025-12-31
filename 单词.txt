@@ -4,7 +4,7 @@ considerable
 
 initiative
 initiate
-
+initial
 
 promenade 
 panoramic 
@@ -72,7 +72,10 @@ royal
 loyal
 
 rust
+russet
+rustle
 lush
+lash
 
 anticipate
 participate
@@ -99,6 +102,7 @@ paddle
 
 dusk
 dust
+dawn
 
 adore
 adorn
@@ -110,4 +114,79 @@ spire
 spine
 
 strew
+stew
 straw
+
+captain
+caption
+
+sector
+section
+
+torch
+torture
+
+wonder  
+wander
+
+concentric
+concentrate
+
+stump
+stamp
+
+captain
+capitan
+
+recline
+decline
+incline
+
+scramble
+ramble
+
+hammock
+hummock
+
+forage
+foliage
+forge
+
+swamp
+swath
+
+clamp
+clump
+
+crucial
+cruel
+
+hospitable
+hostile
+
+tempt
+attempt
+
+lavender
+vanilla
+
+assume
+unassuming
+
+reef
+reed
+
+
+special
+specialize
+specialist
+specialty
+
+handful
+handy
+
+sensitive
+sensitize
+
+rugged
+jagged
