@@ -83,8 +83,12 @@ participate
 unite
 unit
 
-coach 
+
+potato
+tomato
+
 couch 
+coach 
 
 avenue
 venue 
@@ -119,6 +123,7 @@ straw
 
 captain
 caption
+subtitle
 
 sector
 section
@@ -135,8 +140,7 @@ concentrate
 stump
 stamp
 
-captain
-capitan
+
 
 recline
 decline
@@ -173,7 +177,7 @@ vanilla
 assume
 unassuming
 
-reef
+reef 
 reed
 
 
@@ -190,3 +194,12 @@ sensitize
 
 rugged
 jagged
+
+
+leash
+lease
+
+beckon
+reckon
+
+
