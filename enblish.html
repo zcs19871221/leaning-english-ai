@@ -55,16 +55,15 @@
 </head>
 <body>
   <div class="btn-bar">
-    <button id="shuffle-in-group-btn">组内洗牌</button>
-    <button id="shuffle-between-group-btn">组间洗牌</button>
-    <button id="reverse-group-btn">组间倒序</button>
-    <button id="reset-btn">恢复初始状态</button>
-    <button id="restore-btn">恢复删除</button>
+    <button id="export-btn">导出</button>
+    <button id="import-btn">导入</button>
+    <input type="file" id="import-file" style="display:none" accept=".json,.txt">
   </div>
   <div id="groups"></div>
 
   <script>
     const STORAGE_KEY = 'wordGroupsAppData_v1';
+    const REVIEW_INTERVALS = [1, 2, 4, 7, 15]; // 单位：天，可调整
 
     const defaultWordGroups = [
       ["considerable", "considerate"],
@@ -230,14 +229,19 @@
     function loadState() {
       try {
         const data = JSON.parse(localStorage.getItem(STORAGE_KEY));
-        if (data && Array.isArray(data.wordGroups) && Array.isArray(data.revealed) && Array.isArray(data.deletedGroups)) {
+        if (
+          data &&
+          Array.isArray(data.wordGroups) &&
+          Array.isArray(data.revealed) &&
+          Array.isArray(data.completedGroups)
+        ) {
           return data;
         }
       } catch {}
       return {
         wordGroups: JSON.parse(JSON.stringify(defaultWordGroups)),
         revealed: defaultWordGroups.map(group => group.map(() => false)),
-        deletedGroups: []
+        completedGroups: []
       };
     }
 
@@ -245,64 +249,283 @@
       localStorage.setItem(STORAGE_KEY, JSON.stringify({
         wordGroups,
         revealed,
-        deletedGroups
+        completedGroups
       }));
     }
 
-    let { wordGroups, revealed, deletedGroups } = loadState();
+    // 检查defaultWordGroups是否有新单词，自动加入记忆队列
+    function syncNewWords() {
+      let changed = false;
+      // 检查未完成组
+      defaultWordGroups.forEach((group, gi) => {
+        let idx = wordGroups.findIndex(g => JSON.stringify(g) === JSON.stringify(group));
+        if (idx === -1) {
+          // 新组，直接加入未完成
+          wordGroups.push(group.slice());
+          revealed.push(group.map(() => false));
+          changed = true;
+        } else {
+          // 检查组内新单词
+          group.forEach((word, wi) => {
+            if (!wordGroups[idx].includes(word)) {
+              wordGroups[idx].push(word);
+              revealed[idx].push(false);
+              changed = true;
+            }
+          });
+        }
+      });
+      // 检查已完成组（不做自动合并，避免干扰复习进度）
+      if (changed) saveState();
+    }
+
+    let { wordGroups, revealed, completedGroups } = loadState();
+    syncNewWords();
+
+    // pending selection info to pick text after render
+    let pendingSelection = null;
+
+    function performPendingSelection() {
+      if (!pendingSelection) return;
+      // run slightly async to ensure DOM is ready
+      setTimeout(() => {
+        const sel = window.getSelection();
+        sel.removeAllRanges();
+        const selector = `[data-group-type="${pendingSelection.type}"][data-gi="${pendingSelection.gi}"][data-wi="${pendingSelection.wi}"]`;
+        const el = document.querySelector(selector);
+        if (el && el.firstChild && el.firstChild.nodeType === Node.TEXT_NODE) {
+          const range = document.createRange();
+          range.selectNodeContents(el.firstChild);
+          sel.removeAllRanges();
+          sel.addRange(range);
+        }
+        pendingSelection = null;
+      }, 0);
+    }
+
+    // 判断是否需要复习
+    function getDueReviewGroups() {
+      const now = Date.now();
+      return completedGroups.filter(g => g.nextReview && g.nextReview <= now);
+    }
+
+    // 导出功能
+    document.getElementById('export-btn').onclick = function() {
+      const data = {
+        wordGroups,
+        revealed,
+        completedGroups
+      };
+      const blob = new Blob([JSON.stringify(data, null, 2)], {type: 'application/json'});
+      const url = URL.createObjectURL(blob);
+      const a = document.createElement('a');
+      a.href = url;
+      a.download = 'word_state_' + new Date().toISOString().slice(0,10) + '.json';
+      document.body.appendChild(a);
+      a.click();
+      setTimeout(() => {
+        document.body.removeChild(a);
+        URL.revokeObjectURL(url);
+      }, 100);
+    };
+
+    // 导入功能
+    document.getElementById('import-btn').onclick = function() {
+      document.getElementById('import-file').click();
+    };
+    document.getElementById('import-file').onchange = function(e) {
+      const file = e.target.files[0];
+      if (!file) return;
+      const reader = new FileReader();
+      reader.onload = function(evt) {
+        try {
+          const data = JSON.parse(evt.target.result);
+          if (
+            data &&
+            Array.isArray(data.wordGroups) &&
+            Array.isArray(data.revealed) &&
+            Array.isArray(data.completedGroups)
+          ) {
+            wordGroups = data.wordGroups;
+            revealed = data.revealed;
+            completedGroups = data.completedGroups;
+            // 导入后同步新单词
+            syncNewWords();
+            saveState();
+            renderGroups();
+            alert('导入成功！');
+          } else {
+            alert('文件格式不正确');
+          }
+        } catch {
+          alert('文件解析失败');
+        }
+      };
+      reader.readAsText(file);
+      e.target.value = '';
+    };
 
     function renderGroups() {
       const groupsDiv = document.getElementById('groups');
       groupsDiv.innerHTML = '';
-      wordGroups.forEach((group, gi) => {
+
+      // 先显示需要复习的组（来自completedGroups）
+      const dueGroups = getDueReviewGroups();
+      dueGroups.forEach((item, idx) => {
         const groupDiv = document.createElement('div');
         groupDiv.className = 'group';
 
-        const delBtn = document.createElement('button');
-        delBtn.textContent = '删除本组';
-        delBtn.style.marginRight = '10px';
-        delBtn.onclick = () => {
-          deletedGroups.push({
-            group: group.slice(),
-            revealed: revealed[gi].slice(),
-            index: gi
-          });
-          wordGroups.splice(gi, 1);
-          revealed.splice(gi, 1);
-          saveState();
-          renderGroups();
-        };
-        groupDiv.appendChild(delBtn);
+        // find actual index in completedGroups so we can mark dataset correctly
+        const compIndex = completedGroups.indexOf(item);
+
+        item.group.forEach((word, wi) => {
+          const btn = document.createElement('span');
+          btn.className = 'word-btn' + (item.revealed[wi] ? ' revealed' : '');
+          btn.textContent = item.revealed[wi] ? word : '●●●';
+          // mark dataset for reliable lookup after re-render
+          btn.dataset.groupType = 'due';
+          btn.dataset.gi = compIndex;
+          btn.dataset.wi = wi;
+
+          // 只在单词展示时显示按钮
+          if (item.revealed[wi]) {
+            // 完成按钮
+            const doneBtn = document.createElement('button');
+            doneBtn.textContent = '完成';
+            doneBtn.style.marginLeft = '8px';
+            doneBtn.onclick = () => {
+              // 该单词进入复习下一阶段
+              item.reviewCount = (item.reviewCount || 0) + 1;
+              if (item.reviewCount < REVIEW_INTERVALS.length) {
+                item.nextReview = Date.now() + REVIEW_INTERVALS[item.reviewCount] * 24 * 60 * 60 * 1000;
+              } else {
+                // 彻底移除该单词
+                item.group.splice(wi, 1);
+                item.revealed.splice(wi, 1);
+                // 如果组已空，移除整个组
+                if (item.group.length === 0) {
+                  completedGroups = completedGroups.filter(g => g !== item);
+                }
+              }
+              saveState();
+              renderGroups();
+            };
+            btn.appendChild(doneBtn);
+
+            // 忘记了按钮
+            const forgotBtn = document.createElement('button');
+            forgotBtn.textContent = '忘记了';
+            forgotBtn.style.marginLeft = '4px';
+            forgotBtn.onclick = () => {
+              // 该单词复习重置
+              item.reviewCount = 0;
+              item.nextReview = Date.now() + REVIEW_INTERVALS[0] * 24 * 60 * 60 * 1000;
+              item.revealed[wi] = false;
+              saveState();
+              renderGroups();
+            };
+            btn.appendChild(forgotBtn);
+          }
+
+          btn.onclick = () => {
+            const was = !!item.revealed[wi];
+            item.revealed[wi] = !was;
+            saveState();
+            // if just revealed, schedule selection after render
+            if (!was && item.revealed[wi]) {
+              pendingSelection = { type: 'due', gi: compIndex, wi: wi };
+            }
+            renderGroups();
+          };
+          btn.ondblclick = (e) => {
+            btn._skipNextClick = true;
+          };
+          groupDiv.appendChild(btn);
+        });
+        groupsDiv.appendChild(groupDiv);
+      });
+
+      // 再显示未完成的组
+      wordGroups.forEach((group, gi) => {
+        const groupDiv = document.createElement('div');
+        groupDiv.className = 'group';
 
         group.forEach((word, wi) => {
           const btn = document.createElement('span');
           btn.className = 'word-btn' + (revealed[gi][wi] ? ' revealed' : '');
           btn.textContent = revealed[gi][wi] ? word : '●●●';
+          btn.dataset.groupType = 'main';
+          btn.dataset.gi = gi;
+          btn.dataset.wi = wi;
+
+          // 只在单词展示时显示按钮
+          if (revealed[gi][wi]) {
+            // 完成按钮
+            const doneBtn = document.createElement('button');
+            doneBtn.textContent = '完成';
+            doneBtn.style.marginLeft = '8px';
+            doneBtn.onclick = () => {
+              // 单词移入复习队列（单词级别）
+              // 先查找该组是否已在completedGroups
+              let found = completedGroups.find(g => g.group === group);
+              if (!found) {
+                // 新建组
+                found = {
+                  group: [],
+                  revealed: [],
+                  index: gi,
+                  completedAt: Date.now(),
+                  reviewCount: 0,
+                  nextReview: Date.now() + REVIEW_INTERVALS[0] * 24 * 60 * 60 * 1000
+                };
+                completedGroups.push(found);
+              }
+              found.group.push(word);
+              found.revealed.push(false);
+
+              // 从当前组移除该单词
+              group.splice(wi, 1);
+              revealed[gi].splice(wi, 1);
+              // 如果组已空，移除整个组
+              if (group.length === 0) {
+                wordGroups.splice(gi, 1);
+                revealed.splice(gi, 1);
+              }
+              saveState();
+              renderGroups();
+            };
+            btn.appendChild(doneBtn);
+
+            // 忘记了按钮
+            const forgotBtn = document.createElement('button');
+            forgotBtn.textContent = '忘记了';
+            forgotBtn.style.marginLeft = '4px';
+            forgotBtn.onclick = () => {
+              revealed[gi][wi] = false;
+              saveState();
+              renderGroups();
+            };
+            btn.appendChild(forgotBtn);
+          }
 
           btn.onclick = (e) => {
             if (btn._skipNextClick) {
               btn._skipNextClick = false;
               return;
             }
-            revealed[gi][wi] = !revealed[gi][wi];
+            const was = !!revealed[gi][wi];
+            revealed[gi][wi] = !was;
             saveState();
-            renderGroups();
-            if (revealed[gi][wi]) {
-              setTimeout(() => {
-                const groupDivs = document.querySelectorAll('.group');
-                const btns = groupDivs[gi].querySelectorAll('.word-btn');
-                const el = btns[wi];
-                if (window.getSelection && document.createRange) {
-                  const range = document.createRange();
-                  range.selectNodeContents(el);
-                  const sel = window.getSelection();
-                  sel.removeAllRanges();
-                  sel.addRange(range);
-                }
-              }, 0);
+            // if just revealed, set pending selection
+            if (!was && revealed[gi][wi]) {
+              pendingSelection = { type: 'main', gi: gi, wi: wi };
             }
+            renderGroups();
           };
           btn.ondblclick = (e) => {
+            revealed[gi][wi] = false;
+            saveState();
+            renderGroups();
             btn._skipNextClick = true;
           };
 
@@ -310,69 +533,10 @@
         });
         groupsDiv.appendChild(groupDiv);
       });
+
+      // after DOM built, handle any pending selection
+      performPendingSelection();
     }
-
-    // 洗牌函数
-    function shuffleArray(arr) {
-      for (let i = arr.length - 1; i > 0; i--) {
-        const j = Math.floor(Math.random() * (i + 1));
-        [arr[i], arr[j]] = [arr[j], arr[i]];
-      }
-    }
-
-    // 组内洗牌
-    document.getElementById('shuffle-in-group-btn').onclick = function() {
-      for (let i = 0; i < wordGroups.length; i++) {
-        const zipped = wordGroups[i].map((w, idx) => [w, revealed[i][idx]]);
-        shuffleArray(zipped);
-        wordGroups[i] = zipped.map(z => z[0]);
-        revealed[i] = zipped.map(z => z[1]);
-      }
-      saveState();
-      renderGroups();
-    };
-
-    // 组间洗牌
-    document.getElementById('shuffle-between-group-btn').onclick = function() {
-      const zippedGroups = wordGroups.map((group, idx) => [group, revealed[idx]]);
-      shuffleArray(zippedGroups);
-      for (let i = 0; i < zippedGroups.length; i++) {
-        wordGroups[i] = zippedGroups[i][0];
-        revealed[i] = zippedGroups[i][1];
-      }
-      saveState();
-      renderGroups();
-    };
-
-    // 组间倒序
-    document.getElementById('reverse-group-btn').onclick = function() {
-      wordGroups.reverse();
-      revealed.reverse();
-      saveState();
-      renderGroups();
-    };
-
-    // 恢复初始状态
-    document.getElementById('reset-btn').onclick = function() {
-      if (!confirm('确定要恢复到初始状态吗？所有当前状态将丢失。')) return;
-      wordGroups = JSON.parse(JSON.stringify(defaultWordGroups));
-      revealed = defaultWordGroups.map(group => group.map(() => false));
-      deletedGroups = [];
-      saveState();
-      renderGroups();
-    };
-
-    // 恢复删除
-    document.getElementById('restore-btn').onclick = function() {
-      deletedGroups.sort((a, b) => a.index - b.index);
-      deletedGroups.forEach(item => {
-        wordGroups.splice(item.index, 0, item.group);
-        revealed.splice(item.index, 0, item.revealed);
-      });
-      deletedGroups = [];
-      saveState();
-      renderGroups();
-    };
 
     renderGroups();
   </script>
