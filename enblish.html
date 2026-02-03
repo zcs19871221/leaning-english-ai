@@ -1,0 +1,380 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <title>Word Groups Toggle & Sort</title>
+  <style>
+    body { font-family: Arial, sans-serif; padding: 20px; }
+    .group { margin-bottom: 24px; }
+    .word-btn {
+      display: inline-block;
+      margin: 4px 6px;
+      padding: 8px 18px;
+      background: #eee;
+      border: 1px solid #ccc;
+      border-radius: 6px;
+      cursor: pointer;
+      min-width: 60px;
+      text-align: center;
+      transition: background 0.2s;
+    }
+    .word-btn.revealed {
+      background: #d1e7dd;
+      color: #222;
+      border-color: #bcd0c7;
+    }
+    .group-title {
+      font-weight: bold;
+      margin-bottom: 6px;
+      color: #2a4d69;
+    }
+    .btn-bar {
+      position: sticky;
+      top: 0;
+      background: #fff;
+      z-index: 10;
+      padding: 12px 0 16px 0;
+      margin-bottom: 18px;
+      border-bottom: 1px solid #eee;
+    }
+    .btn-bar button {
+      margin-right: 12px;
+      padding: 10px 22px;
+      font-size: 16px;
+      background: #4d90fe;
+      color: #fff;
+      border: none;
+      border-radius: 6px;
+      cursor: pointer;
+      transition: background 0.2s;
+    }
+    .btn-bar button:hover {
+      background: #357ae8;
+    }
+  </style>
+</head>
+<body>
+  <div class="btn-bar">
+    <button id="shuffle-in-group-btn">组内洗牌</button>
+    <button id="shuffle-between-group-btn">组间洗牌</button>
+    <button id="reverse-group-btn">组间倒序</button>
+    <button id="reset-btn">恢复初始状态</button>
+    <button id="restore-btn">恢复删除</button>
+  </div>
+  <div id="groups"></div>
+
+  <script>
+    const STORAGE_KEY = 'wordGroupsAppData_v1';
+
+    const defaultWordGroups = [
+      ["considerable", "considerate"],
+      ["initiative", "initiate", "initial", "initial"],
+      ["panoramic", "promenade", "lemonade"],
+      ["prey", "predator", "predate", "pray", "priest"],
+      ["inhabit", "habitat", "habitation", "inhabitant"],
+      ["epidemic", "endemic"],
+      ["eternal", "ethereal"],
+      ["turf", "tuft"],
+      ["aboard", "abroad", "board"],
+      ["cottage", "cabbage", "carriage"],
+      ["equine", "aquatic"],
+      ["boast", "boost"],
+      ["scrub", "succumb", "scurry"],
+      ["spirit", "sprite"],
+      ["indulging", "undulating"],
+      ["flip", "flap"],
+      ["captivate", "captive", "capture"],
+      ["lag", "lug", "tug"],
+      ["loyal", "royal"],
+      ["rustic", "rust", "rustle", "russet", "lush", "lash"],
+      ["participate", "precipitate", "anticipate"],
+      ["unite", "unit"],
+      ["potato", "tomato"],
+      ["couch", "coach"],
+      ["avenue", "venue", "convention"],
+      ["vibrant", "vibrance", "vibe"],
+      ["flank", "plank"],
+      ["pedal", "paddle"],
+      ["dust", "dusk", "dawn"],
+      ["adorn", "adore"],
+      ["bow", "bowl"],
+      ["spire", "spine", "spindly", "spindly", "spin"],
+      ["stew", "strew", "straw"],
+      ["captain", "subtitle", "caption"],
+      ["sector", "section"],
+      ["torch", "torture"],
+      ["wonder", "wander"],
+      ["concentric", "concentrate"],
+      ["stump", "stamp"],
+      ["recline", "decline", "incline"],
+      ["rumble", "scramble", "ramble"],
+      ["hammock", "hummock"],
+      ["forage", "forge", "foliage"],
+      ["swamp", "swath"],
+      ["clamp", "clump"],
+      ["crucial", "cruel"],
+      ["hospitable", "hostile"],
+      ["tempt", "attempt"],
+      ["lavender", "vanilla"],
+      ["assume", "unassuming"],
+      ["reed", "reef"],
+      ["specialist", "specialize", "special", "specialty"],
+      ["handful", "handy"],
+      ["incentive", "sensitive", "sensitize"],
+      ["rough", "rugged", "jagged"],
+      ["leash", "lease"],
+      ["beckon", "reckon"],
+      ["spin", "spindly"],
+      ["morale", "moral", "mortal", "Immortal"],
+      ["doorway", "doorstep"],
+      ["evocative", "exacerbation", "evacuation", "excavation"],
+      ["terrain", "terraced"],
+      ["groves", "gloves"],
+      ["geologic", "geometric", "geographic", "geothermal", "geology"],
+      ["intend", "tend"],
+      ["turn around", "round"],
+      ["fudge", "fungus"],
+      ["perspective", "perception", "prospect"],
+      ["circumstance", "perimeter", "circumference"],
+      ["proximity", "approximate"],
+      ["breathe", "breath"],
+      ["wiggle", "wobble"],
+      ["leisure", "luxury"],
+      ["flip", "flap"],
+      ["juvenile", "rejuvenate"],
+      ["ripple", "rip", "ripping"],
+      ["stalk", "stake", "steak"],
+      ["squelch", "squeal", "squeeze"],
+      ["alien", "ally"],
+      ["appropriate adj", "appropriate v"],
+      ["billow", "blow"],
+      ["serenity", "serene"],
+      ["hushed", "hustled"],
+      ["deck", "desk", "dock"],
+      ["cedar", "cider"],
+      ["strap", "strip", "stride", "string"],
+      ["tilt", "lilt"],
+      ["pinnacle", "barnacle"],
+      ["spine", "spire"],
+      ["crest", "crescent"],
+      ["chill", "chilly"],
+      ["cranial", "crane"],
+      ["scorch", "scour"],
+      ["shuffle", "commute", "shuttle"],
+      ["joint", "jolt"],
+      ["bend", "blend"],
+      ["founder", "funder", "fund", "found", "find"],
+      ["reverse", "revert"],
+      ["compete", "complete"],
+      ["brake", "bake"],
+      ["creative", "intellectual", "innovative", "ingenuity"],
+      ["capital", "capita"],
+      ["nocturnal", "necropolis"],
+      ["pitch", "ditch"],
+      ["lick", "flick"],
+      ["mood", "moor"],
+      ["glacier", "glacial"],
+      ["yurt", "yacht"],
+      ["par for the course"],
+      ["toward(s) the south", "due south"],
+      ["gaze", "glaze"],
+      ["interference", "intervening", "intervene"],
+      ["raven", "ravine"],
+      ["roar", "roam"],
+      ["affront", "confront", "comfort"],
+      ["sign", "sigh"],
+      ["tense", "intense"],
+      ["visualize", "vision"],
+      ["comprehensive", "comprehension"],
+      ["prior", "priority"],
+      ["isolated", "insulated"],
+      ["bath", "bathe"],
+      ["born to", "born from", "dairy farm"],
+      ["radical", "radiate"],
+      ["plate", "platter", "tray"],
+      ["picky", "prick"],
+      ["complain", "comply", "comprise"],
+      ["runway", "runaway"],
+      ["tuxedo", "detox", "toxic"],
+      ["toll", "tow", "toe"],
+      ["tycoon", "magnate", "mogul", "magnet"],
+      ["tick", "ticket"],
+      ["mock v", "mock adj"],
+      ["squad", "squid"],
+      ["synonym", "synonymous"],
+      ["thrive", "strive"],
+      ["ceremony", "cemetery"],
+      ["spot - plot"],
+      ["rustic"],
+      ["assuming", "unassuming"],
+      ["grin", "grind"],
+      ["illuminate", "illusion"],
+      ["haunt", "haul", "hound"],
+      ["diesel", "kerosene", "petrol"],
+      ["entwined", "intertwined"],
+      ["across the street from 。。。"],
+      ["sold out weeks in advance", "sold out in weeks"],
+      ["sold out weeks in advance = 提前几周售罄（强调提前量）", "sold out in weeks = 几周内售罄（强调用时）"],
+      ["spectrum", "spectre"],
+      ["repute", "dispute", "deputy"],
+      ["sturdy", "steady"],
+      ["descent"],
+      ["stake"],
+      ["helm", "helmet"],
+      ["lurk", "lurch"],
+      ["crater", "crate", "cater"],
+      ["burn", "burnt", "burnt"],
+      ["iron", "steel", "copper", "aluminium"]
+    ];
+
+    function loadState() {
+      try {
+        const data = JSON.parse(localStorage.getItem(STORAGE_KEY));
+        if (data && Array.isArray(data.wordGroups) && Array.isArray(data.revealed) && Array.isArray(data.deletedGroups)) {
+          return data;
+        }
+      } catch {}
+      return {
+        wordGroups: JSON.parse(JSON.stringify(defaultWordGroups)),
+        revealed: defaultWordGroups.map(group => group.map(() => false)),
+        deletedGroups: []
+      };
+    }
+
+    function saveState() {
+      localStorage.setItem(STORAGE_KEY, JSON.stringify({
+        wordGroups,
+        revealed,
+        deletedGroups
+      }));
+    }
+
+    let { wordGroups, revealed, deletedGroups } = loadState();
+
+    function renderGroups() {
+      const groupsDiv = document.getElementById('groups');
+      groupsDiv.innerHTML = '';
+      wordGroups.forEach((group, gi) => {
+        const groupDiv = document.createElement('div');
+        groupDiv.className = 'group';
+
+        const delBtn = document.createElement('button');
+        delBtn.textContent = '删除本组';
+        delBtn.style.marginRight = '10px';
+        delBtn.onclick = () => {
+          deletedGroups.push({
+            group: group.slice(),
+            revealed: revealed[gi].slice(),
+            index: gi
+          });
+          wordGroups.splice(gi, 1);
+          revealed.splice(gi, 1);
+          saveState();
+          renderGroups();
+        };
+        groupDiv.appendChild(delBtn);
+
+        group.forEach((word, wi) => {
+          const btn = document.createElement('span');
+          btn.className = 'word-btn' + (revealed[gi][wi] ? ' revealed' : '');
+          btn.textContent = revealed[gi][wi] ? word : '●●●';
+
+          btn.onclick = (e) => {
+            if (btn._skipNextClick) {
+              btn._skipNextClick = false;
+              return;
+            }
+            revealed[gi][wi] = !revealed[gi][wi];
+            saveState();
+            renderGroups();
+            if (revealed[gi][wi]) {
+              setTimeout(() => {
+                const groupDivs = document.querySelectorAll('.group');
+                const btns = groupDivs[gi].querySelectorAll('.word-btn');
+                const el = btns[wi];
+                if (window.getSelection && document.createRange) {
+                  const range = document.createRange();
+                  range.selectNodeContents(el);
+                  const sel = window.getSelection();
+                  sel.removeAllRanges();
+                  sel.addRange(range);
+                }
+              }, 0);
+            }
+          };
+          btn.ondblclick = (e) => {
+            btn._skipNextClick = true;
+          };
+
+          groupDiv.appendChild(btn);
+        });
+        groupsDiv.appendChild(groupDiv);
+      });
+    }
+
+    // 洗牌函数
+    function shuffleArray(arr) {
+      for (let i = arr.length - 1; i > 0; i--) {
+        const j = Math.floor(Math.random() * (i + 1));
+        [arr[i], arr[j]] = [arr[j], arr[i]];
+      }
+    }
+
+    // 组内洗牌
+    document.getElementById('shuffle-in-group-btn').onclick = function() {
+      for (let i = 0; i < wordGroups.length; i++) {
+        const zipped = wordGroups[i].map((w, idx) => [w, revealed[i][idx]]);
+        shuffleArray(zipped);
+        wordGroups[i] = zipped.map(z => z[0]);
+        revealed[i] = zipped.map(z => z[1]);
+      }
+      saveState();
+      renderGroups();
+    };
+
+    // 组间洗牌
+    document.getElementById('shuffle-between-group-btn').onclick = function() {
+      const zippedGroups = wordGroups.map((group, idx) => [group, revealed[idx]]);
+      shuffleArray(zippedGroups);
+      for (let i = 0; i < zippedGroups.length; i++) {
+        wordGroups[i] = zippedGroups[i][0];
+        revealed[i] = zippedGroups[i][1];
+      }
+      saveState();
+      renderGroups();
+    };
+
+    // 组间倒序
+    document.getElementById('reverse-group-btn').onclick = function() {
+      wordGroups.reverse();
+      revealed.reverse();
+      saveState();
+      renderGroups();
+    };
+
+    // 恢复初始状态
+    document.getElementById('reset-btn').onclick = function() {
+      if (!confirm('确定要恢复到初始状态吗？所有当前状态将丢失。')) return;
+      wordGroups = JSON.parse(JSON.stringify(defaultWordGroups));
+      revealed = defaultWordGroups.map(group => group.map(() => false));
+      deletedGroups = [];
+      saveState();
+      renderGroups();
+    };
+
+    // 恢复删除
+    document.getElementById('restore-btn').onclick = function() {
+      deletedGroups.sort((a, b) => a.index - b.index);
+      deletedGroups.forEach(item => {
+        wordGroups.splice(item.index, 0, item.group);
+        revealed.splice(item.index, 0, item.revealed);
+      });
+      deletedGroups = [];
+      saveState();
+      renderGroups();
+    };
+
+    renderGroups();
+  </script>
+</body>
+</html>
