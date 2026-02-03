@@ -57,13 +57,64 @@
   <div class="btn-bar">
     <button id="export-btn">导出</button>
     <button id="import-btn">导入</button>
+    <button id="shuffle-in-group-btn" title="组内洗牌">组内洗牌</button>
+    <button id="shuffle-groups-btn" title="组间洗牌">组间洗牌</button>
     <input type="file" id="import-file" style="display:none" accept=".json,.txt">
   </div>
   <div id="groups"></div>
-
+  
   <script>
     const STORAGE_KEY = 'wordGroupsAppData_v1';
     const REVIEW_INTERVALS = [1, 2, 4, 7, 15]; // 单位：天，可调整
+    const SHORT_FORGET_MS = 10 * 60 * 1000; // 忘记后首次重现：10 分钟
+
+    // recent-window 用于组间洗牌（10 分钟窗口）
+    let recentWindow = {
+      items: new Set(), // 存放 completedGroups 中的引用
+      start: null,
+      timer: null,
+      WINDOW_MS: 10 * 60 * 1000
+    };
+
+    function scheduleWindowShuffle(groupRef) {
+      // 把该组标记到窗口集合
+      recentWindow.items.add(groupRef);
+      if (!recentWindow.start) {
+        recentWindow.start = Date.now();
+        recentWindow.timer = setTimeout(finalizeWindowShuffle, recentWindow.WINDOW_MS);
+      }
+    }
+
+    function finalizeWindowShuffle() {
+      if (recentWindow.items.size > 0) {
+        // 取出需重排的项并随机顺序
+        const items = Array.from(recentWindow.items);
+        shuffleArray(items);
+        // 将“遗忘/复位”（reviewCount === 0）项优先放前面
+        const forgotten = items.filter(it => (it.reviewCount || 0) === 0);
+        const learned = items.filter(it => (it.reviewCount || 0) > 0);
+        const ordered = [...forgotten, ...learned];
+
+        // 从 completedGroups 中移除这些项
+        completedGroups = completedGroups.filter(g => !recentWindow.items.has(g));
+        // 将乱序后的项插回到原来最早的位置（或末尾）
+        const originalPositions = ordered
+          .map(it => completedGroups.indexOf(it))
+          .filter(i => i >= 0)
+          .sort((a, b) => a - b);
+        const insertAt = originalPositions.length ? originalPositions[0] : completedGroups.length;
+        completedGroups.splice(insertAt, 0, ...ordered);
+      }
+      // 清理窗口状态
+      recentWindow.items.clear();
+      recentWindow.start = null;
+      if (recentWindow.timer) {
+        clearTimeout(recentWindow.timer);
+        recentWindow.timer = null;
+      }
+      saveState();
+      renderGroups();
+    }
 
     const defaultWordGroups = [
       ["considerable", "considerate"],
@@ -285,22 +336,58 @@
     // pending selection info to pick text after render
     let pendingSelection = null;
 
+    // improved pending selection: retry a few times until the element/text appears
     function performPendingSelection() {
       if (!pendingSelection) return;
-      // run slightly async to ensure DOM is ready
-      setTimeout(() => {
-        const sel = window.getSelection();
-        sel.removeAllRanges();
+      let attempts = 0;
+      const maxAttempts = 8;
+      const trySelect = () => {
+        attempts++;
         const selector = `[data-group-type="${pendingSelection.type}"][data-gi="${pendingSelection.gi}"][data-wi="${pendingSelection.wi}"]`;
         const el = document.querySelector(selector);
-        if (el && el.firstChild && el.firstChild.nodeType === Node.TEXT_NODE) {
-          const range = document.createRange();
-          range.selectNodeContents(el.firstChild);
-          sel.removeAllRanges();
-          sel.addRange(range);
+        if (el) {
+          // prefer a real text node child
+          const textNode = Array.from(el.childNodes).find(n => n.nodeType === Node.TEXT_NODE && n.textContent.trim().length > 0);
+          if (textNode) {
+            const range = document.createRange();
+            range.selectNodeContents(textNode);
+            const sel = window.getSelection();
+            sel.removeAllRanges();
+            sel.addRange(range);
+            pendingSelection = null;
+            return;
+          } else {
+            // fallback: try to select the span's visible text (excluding button labels by offsets)
+            const txt = (el.textContent || '').trim();
+            if (txt) {
+              // create/ensure a text node to select from
+              let baseNode = el.firstChild && el.firstChild.nodeType === Node.TEXT_NODE ? el.firstChild : null;
+              if (!baseNode) {
+                baseNode = document.createTextNode(txt);
+                el.insertBefore(baseNode, el.firstChild || null);
+              }
+              const start = baseNode.textContent.indexOf(txt);
+              if (start >= 0) {
+                const range = document.createRange();
+                range.setStart(baseNode, start);
+                range.setEnd(baseNode, start + txt.length);
+                const sel = window.getSelection();
+                sel.removeAllRanges();
+                sel.addRange(range);
+                pendingSelection = null;
+                return;
+              }
+            }
+          }
         }
-        pendingSelection = null;
-      }, 0);
+        if (attempts < maxAttempts) {
+          setTimeout(trySelect, 80);
+        } else {
+          pendingSelection = null;
+        }
+      };
+      // start after a short delay to allow render/paint
+      setTimeout(trySelect, 0);
     }
 
     // 判断是否需要复习
@@ -365,6 +452,53 @@
       e.target.value = '';
     };
 
+    // utility: Fisher–Yates shuffle (in-place)
+    function shuffleArray(arr) {
+      for (let i = arr.length - 1; i > 0; i--) {
+        const j = Math.floor(Math.random() * (i + 1));
+        [arr[i], arr[j]] = [arr[j], arr[i]];
+      }
+      return arr;
+    }
+
+    // shuffle words only inside each group (preserve revealed mapping)
+    document.getElementById('shuffle-in-group-btn').onclick = function() {
+      // shuffle each main group
+      wordGroups.forEach((group, gi) => {
+        if (group.length <= 1) return;
+        // create index array and shuffle it
+        const idxs = group.map((_, i) => i);
+        shuffleArray(idxs);
+        const newGroup = idxs.map(i => group[i]);
+        const newRevealed = idxs.map(i => revealed[gi][i]);
+        wordGroups[gi] = newGroup;
+        revealed[gi] = newRevealed;
+      });
+      // also shuffle inside completedGroups entries
+      completedGroups.forEach((cg) => {
+        if (!cg.group || cg.group.length <= 1) return;
+        const idxs = cg.group.map((_, i) => i);
+        shuffleArray(idxs);
+        cg.group = idxs.map(i => cg.group[i]);
+        cg.revealed = idxs.map(i => cg.revealed[i]);
+      });
+      saveState();
+      renderGroups();
+    };
+
+    // shuffle group order (main groups) while keeping internal word/revealed pairs intact
+    document.getElementById('shuffle-groups-btn').onclick = function() {
+      if (wordGroups.length <= 1) return;
+      const idxs = wordGroups.map((_, i) => i);
+      shuffleArray(idxs);
+      const newGroups = idxs.map(i => wordGroups[i]);
+      const newRevealed = idxs.map(i => revealed[i]);
+      wordGroups = newGroups;
+      revealed = newRevealed;
+      saveState();
+      renderGroups();
+    };
+
     function renderGroups() {
       const groupsDiv = document.getElementById('groups');
       groupsDiv.innerHTML = '';
@@ -378,70 +512,103 @@
         // find actual index in completedGroups so we can mark dataset correctly
         const compIndex = completedGroups.indexOf(item);
 
+        // 每个单词只渲染 span，不再在单词内放按钮
         item.group.forEach((word, wi) => {
           const btn = document.createElement('span');
           btn.className = 'word-btn' + (item.revealed[wi] ? ' revealed' : '');
           btn.textContent = item.revealed[wi] ? word : '●●●';
-          // mark dataset for reliable lookup after re-render
           btn.dataset.groupType = 'due';
           btn.dataset.gi = compIndex;
           btn.dataset.wi = wi;
 
-          // 只在单词展示时显示按钮
-          if (item.revealed[wi]) {
-            // 完成按钮
-            const doneBtn = document.createElement('button');
-            doneBtn.textContent = '完成';
-            doneBtn.style.marginLeft = '8px';
-            doneBtn.onclick = () => {
-              // 该单词进入复习下一阶段
-              item.reviewCount = (item.reviewCount || 0) + 1;
-              if (item.reviewCount < REVIEW_INTERVALS.length) {
-                item.nextReview = Date.now() + REVIEW_INTERVALS[item.reviewCount] * 24 * 60 * 60 * 1000;
-              } else {
-                // 彻底移除该单词
-                item.group.splice(wi, 1);
-                item.revealed.splice(wi, 1);
-                // 如果组已空，移除整个组
-                if (item.group.length === 0) {
-                  completedGroups = completedGroups.filter(g => g !== item);
-                }
-              }
-              saveState();
-              renderGroups();
-            };
-            btn.appendChild(doneBtn);
-
-            // 忘记了按钮
-            const forgotBtn = document.createElement('button');
-            forgotBtn.textContent = '忘记了';
-            forgotBtn.style.marginLeft = '4px';
-            forgotBtn.onclick = () => {
-              // 该单词复习重置
-              item.reviewCount = 0;
-              item.nextReview = Date.now() + REVIEW_INTERVALS[0] * 24 * 60 * 60 * 1000;
-              item.revealed[wi] = false;
-              saveState();
-              renderGroups();
-            };
-            btn.appendChild(forgotBtn);
-          }
-
           btn.onclick = () => {
-            const was = !!item.revealed[wi];
-            item.revealed[wi] = !was;
-            saveState();
-            // if just revealed, schedule selection after render
-            if (!was && item.revealed[wi]) {
-              pendingSelection = { type: 'due', gi: compIndex, wi: wi };
+            if (item.revealed[wi]) {
+              selectSpanText(btn);
+              return;
             }
+            item.revealed[wi] = true;
+            saveState();
+            pendingSelection = { type: 'due', gi: compIndex, wi: wi };
             renderGroups();
           };
           btn.ondblclick = (e) => {
+            // 双击保持原逻辑（用于取消/隐藏）
             btn._skipNextClick = true;
           };
           groupDiv.appendChild(btn);
         });
+
+        // 仅当组内所有单词都已展示时，才在同一行末尾显示组操作按钮
+        const allShownDue = item.group.every((_, i) => !!item.revealed[i]);
+        if (allShownDue) {
+          const controls = document.createElement('span'); // 使用 span 保持在同一行
+          controls.style.marginLeft = '12px';
+          controls.style.verticalAlign = 'middle';
+
+          const doneGroupBtn = document.createElement('button');
+          doneGroupBtn.textContent = '完成';
+          doneGroupBtn.style.marginRight = '8px';
+          doneGroupBtn.onclick = (e) => {
+            e.stopPropagation();
+            // 组内洗牌，保证下一次复现顺序不同
+            {
+              const idxs = item.group.map((_, i) => i);
+              shuffleArray(idxs);
+              item.group = idxs.map(i => item.group[i]);
+              // 复习时重置为未展示
+              item.revealed = item.group.map(() => false);
+            }
+            // 把整个 completedGroups 的该组推进到下一复习间隔或移除（全部完成）
+            item.reviewCount = (item.reviewCount || 0) + 1;
+            if (item.reviewCount < REVIEW_INTERVALS.length) {
+              item.nextReview = Date.now() + REVIEW_INTERVALS[item.reviewCount] * 24 * 60 * 60 * 1000;
+              // 在窗口内注册组间洗牌
+              scheduleWindowShuffle(item);
+            } else {
+              // 全组复习完成，移除该 completedGroups 项
+              completedGroups = completedGroups.filter(g => g !== item);
+            }
+            saveState();
+            // 自动展示下一个到期组的第一个单词（若存在）
+            const nextDue = getDueReviewGroups().find(g => g !== item);
+            if (nextDue) {
+              nextDue.revealed[0] = true;
+              pendingSelection = { type: 'due', gi: completedGroups.indexOf(nextDue), wi: 0 };
+            }
+            renderGroups();
+          };
+          controls.appendChild(doneGroupBtn);
+
+          const forgotGroupBtn = document.createElement('button');
+          forgotGroupBtn.textContent = '忘了';
+          forgotGroupBtn.onclick = (e) => {
+            e.stopPropagation();
+            // 组内洗牌，保证下一次复现顺序不同
+            {
+              const idxs = item.group.map((_, i) => i);
+              shuffleArray(idxs);
+              item.group = idxs.map(i => item.group[i]);
+            }
+            // 重置复习计数并将所有单词设为未展示，置为下次复习（首次短间隔）
+            item.reviewCount = 0;
+            item.nextReview = Date.now() + SHORT_FORGET_MS;
+            item.revealed = item.group.map(() => false);
+            // 在窗口内注册组间洗牌
+            scheduleWindowShuffle(item);
+            saveState();
+            // 自动展示下一个到期组的第一个单词（若存在）
+            const nextDue2 = getDueReviewGroups().find(g => g !== item);
+            if (nextDue2) {
+              nextDue2.revealed[0] = true;
+              pendingSelection = { type: 'due', gi: completedGroups.indexOf(nextDue2), wi: 0 };
+            }
+            renderGroups();
+          };
+          controls.appendChild(forgotGroupBtn);
+
+          groupDiv.appendChild(controls);
+        }
+
         groupsDiv.appendChild(groupDiv);
       });
 
@@ -458,68 +625,18 @@
           btn.dataset.gi = gi;
           btn.dataset.wi = wi;
 
-          // 只在单词展示时显示按钮
-          if (revealed[gi][wi]) {
-            // 完成按钮
-            const doneBtn = document.createElement('button');
-            doneBtn.textContent = '完成';
-            doneBtn.style.marginLeft = '8px';
-            doneBtn.onclick = () => {
-              // 单词移入复习队列（单词级别）
-              // 先查找该组是否已在completedGroups
-              let found = completedGroups.find(g => g.group === group);
-              if (!found) {
-                // 新建组
-                found = {
-                  group: [],
-                  revealed: [],
-                  index: gi,
-                  completedAt: Date.now(),
-                  reviewCount: 0,
-                  nextReview: Date.now() + REVIEW_INTERVALS[0] * 24 * 60 * 60 * 1000
-                };
-                completedGroups.push(found);
-              }
-              found.group.push(word);
-              found.revealed.push(false);
-
-              // 从当前组移除该单词
-              group.splice(wi, 1);
-              revealed[gi].splice(wi, 1);
-              // 如果组已空，移除整个组
-              if (group.length === 0) {
-                wordGroups.splice(gi, 1);
-                revealed.splice(gi, 1);
-              }
-              saveState();
-              renderGroups();
-            };
-            btn.appendChild(doneBtn);
-
-            // 忘记了按钮
-            const forgotBtn = document.createElement('button');
-            forgotBtn.textContent = '忘记了';
-            forgotBtn.style.marginLeft = '4px';
-            forgotBtn.onclick = () => {
-              revealed[gi][wi] = false;
-              saveState();
-              renderGroups();
-            };
-            btn.appendChild(forgotBtn);
-          }
-
           btn.onclick = (e) => {
             if (btn._skipNextClick) {
               btn._skipNextClick = false;
               return;
             }
-            const was = !!revealed[gi][wi];
-            revealed[gi][wi] = !was;
-            saveState();
-            // if just revealed, set pending selection
-            if (!was && revealed[gi][wi]) {
-              pendingSelection = { type: 'main', gi: gi, wi: wi };
+            if (revealed[gi][wi]) {
+              selectSpanText(btn);
+              return;
             }
+            revealed[gi][wi] = true;
+            saveState();
+            pendingSelection = { type: 'main', gi: gi, wi: wi };
             renderGroups();
           };
           btn.ondblclick = (e) => {
@@ -531,6 +648,91 @@
 
           groupDiv.appendChild(btn);
         });
+
+        // 仅当组内所有单词都已展示时，才在同一行末尾显示组操作按钮
+        const allShownMain = group.every((_, i) => !!revealed[gi][i]);
+        if (allShownMain) {
+          const groupControls = document.createElement('span'); // 使用 span 保持在同一行
+          groupControls.style.marginLeft = '12px';
+          groupControls.style.verticalAlign = 'middle';
+
+          const doneBtn = document.createElement('button');
+          doneBtn.textContent = '完成';
+          doneBtn.style.marginRight = '8px';
+          doneBtn.onclick = (e) => {
+            e.stopPropagation();
+            // 把整个组移入 completedGroups（复习队列），并组内洗牌
+            const found = {
+              group: group.slice(),
+              revealed: group.map(() => false),
+              index: gi,
+              completedAt: Date.now(),
+              reviewCount: 0,
+              nextReview: Date.now() + REVIEW_INTERVALS[0] * 24 * 60 * 60 * 1000
+            };
+            // 组内洗牌，保证下一次复现顺序不同
+            {
+              const idxs = found.group.map((_, i) => i);
+              shuffleArray(idxs);
+              found.group = idxs.map(i => found.group[i]);
+              found.revealed = found.group.map(() => false);
+            }
+            completedGroups.push(found);
+            // 从主列表删除该组
+            wordGroups.splice(gi, 1);
+            revealed.splice(gi, 1);
+            // 在窗口内注册组间洗牌
+            scheduleWindowShuffle(found);
+            saveState();
+            // 自动展示移动后主列表中同位置的第一个单词（若存在）
+            const nextGi = gi; // 删除后下一个组会在相同索引位置
+            if (wordGroups[nextGi] && revealed[nextGi]) {
+              revealed[nextGi][0] = true;
+              pendingSelection = { type: 'main', gi: nextGi, wi: 0 };
+            }
+            renderGroups();
+          };
+          groupControls.appendChild(doneBtn);
+
+          const forgotBtn = document.createElement('button');
+          forgotBtn.textContent = '忘了';
+          forgotBtn.onclick = (e) => {
+            e.stopPropagation();
+            // 把整个组移入复习队列，作为遗忘起点（组内洗牌并 reveal 全部为 false）
+            const found2 = {
+              group: group.slice(),
+              revealed: group.map(() => false),
+              index: gi,
+              completedAt: Date.now(),
+              reviewCount: 0,
+              nextReview: Date.now() + SHORT_FORGET_MS
+            };
+            // 组内洗牌
+            {
+              const idxs = found2.group.map((_, i) => i);
+              shuffleArray(idxs);
+              found2.group = idxs.map(i => found2.group[i]);
+              found2.revealed = found2.group.map(() => false);
+            }
+            completedGroups.push(found2);
+            wordGroups.splice(gi, 1);
+            revealed.splice(gi, 1);
+            // 在窗口内注册组间洗牌
+            scheduleWindowShuffle(found2);
+            saveState();
+            // 自动展示移动后主列表中同位置的第一个单词（若存在）
+            const nextGi2 = gi;
+            if (wordGroups[nextGi2] && revealed[nextGi2]) {
+              revealed[nextGi2][0] = true;
+              pendingSelection = { type: 'main', gi: nextGi2, wi: 0 };
+            }
+            renderGroups();
+          };
+          groupControls.appendChild(forgotBtn);
+
+          groupDiv.appendChild(groupControls);
+        }
+
         groupsDiv.appendChild(groupDiv);
       });
 
@@ -539,6 +741,38 @@
     }
 
     renderGroups();
+    // helper: select visible word text inside a span (avoid selecting button labels)
+    function selectSpanText(el) {
+      if (!el) return;
+      // prefer a real text node child
+      const textNode = Array.from(el.childNodes).find(n => n.nodeType === Node.TEXT_NODE && n.textContent.trim().length > 0);
+      if (textNode) {
+        const range = document.createRange();
+        range.selectNodeContents(textNode);
+        const sel = window.getSelection();
+        sel.removeAllRanges();
+        sel.addRange(range);
+        return true;
+      }
+      // fallback: try to pick visible trimmed substring
+      const txt = (el.textContent || '').trim();
+      if (!txt) return false;
+      // ensure a base text node exists
+      let baseNode = el.firstChild && el.firstChild.nodeType === Node.TEXT_NODE ? el.firstChild : null;
+      if (!baseNode) {
+        baseNode = document.createTextNode(txt);
+        el.insertBefore(baseNode, el.firstChild || null);
+      }
+      const start = baseNode.textContent.indexOf(txt);
+      if (start < 0) return false;
+      const range = document.createRange();
+      range.setStart(baseNode, start);
+      range.setEnd(baseNode, start + txt.length);
+      const sel = window.getSelection();
+      sel.removeAllRanges();
+      sel.addRange(range);
+      return true;
+    }
   </script>
 </body>
 </html>
