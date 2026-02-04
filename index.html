@@ -60,6 +60,7 @@
     <button id="shuffle-in-group-btn" title="组内洗牌">组内洗牌</button>
     <button id="shuffle-groups-btn" title="组间洗牌">组间洗牌</button>
     <input type="file" id="import-file" style="display:none" accept=".json,.txt">
+    <input id="search-input" placeholder="搜索单词（实时匹配）" style="margin-left:12px;padding:8px 12px;" />
   </div>
   <div id="groups"></div>
   
@@ -75,6 +76,10 @@
       timer: null,
       WINDOW_MS: 10 * 60 * 1000
     };
+    // 当前搜索词（仅用于 UI 过滤，不保存到 localStorage）
+    let searchTerm = '';
+    // 上一次触发选中的搜索词（用于判断是否需要重新选中）
+    let lastSelectedSearchTerm = '';
 
     function scheduleWindowShuffle(groupRef) {
       // 把该组标记到窗口集合
@@ -117,7 +122,9 @@
     }
 
     const defaultWordGroups = [
-      ["considerable", "considerate"],
+      ["tap", "tap into"],
+      ["strike","stroke","struck","stoke"],
+      ["considerable", "considerate",'sss'],
       ["initiative", "initiate", "initial", "initial"],
       ["panoramic", "promenade", "lemonade"],
       ["prey", "predator", "predate", "pray", "priest"],
@@ -136,7 +143,7 @@
       ["captivate", "captive", "capture"],
       ["lag", "lug", "tug"],
       ["loyal", "royal"],
-      ["rustic", "rust", "rustle", "russet", "lush", "lash"],
+      ["rustic", "rust", "rustle", "russet", "lush", "lash", "lust"],
       ["participate", "precipitate", "anticipate"],
       ["unite", "unit"],
       ["potato", "tomato"],
@@ -270,7 +277,7 @@
       ["sturdy", "steady"],
       ["descent"],
       ["stake"],
-      ["helm", "helmet"],
+      ["helm", "helmet", "hamlet"],
       ["lurk", "lurch"],
       ["crater", "crate", "cater"],
       ["burn", "burnt", "burnt"],
@@ -304,49 +311,138 @@
       }));
     }
 
-    // 检查defaultWordGroups是否有新单词，自动加入记忆队列
+    // 检查defaultWordGroups是否有新单词或组内变化，自动加入/更新主队列并移除复习队列中的重复项
     function syncNewWords() {
       let changed = false;
-      // 检查未完成组
-      defaultWordGroups.forEach((group, gi) => {
-        let idx = wordGroups.findIndex(g => JSON.stringify(g) === JSON.stringify(group));
-        if (idx === -1) {
-          // 新组，直接加入未完成
-          wordGroups.push(group.slice());
-          revealed.push(group.map(() => false));
+
+      // helper: 检查两组是否有交集
+      function hasOverlap(a, b) {
+        const setB = new Set(b);
+        return a.some(x => setB.has(x));
+      }
+
+      // 对每个 defaultGroup：若主列表没有完全相同的组，则确保页面最前有一份以 default 为准的组
+      for (const defGroup of defaultWordGroups) {
+        // 若主列表已有完全相同的组（顺序也相同），跳过
+        const defKey = JSON.stringify(defGroup);
+        const mainExact = wordGroups.findIndex(g => JSON.stringify(g) === defKey);
+        if (mainExact !== -1) continue;
+
+        // 若主列表中存在与 defGroup 有交集但不完全相同的组，移除旧组并把 defGroup 放到顶部（覆盖并视为更新）
+        const mainOverlapIdx = wordGroups.findIndex(g => hasOverlap(g, defGroup));
+        if (mainOverlapIdx !== -1) {
+          wordGroups.splice(mainOverlapIdx, 1);
+          revealed.splice(mainOverlapIdx, 1);
+          wordGroups.unshift(defGroup.slice());
+          revealed.unshift(defGroup.map(() => false));
           changed = true;
-        } else {
-          // 检查组内新单词
-          group.forEach((word, wi) => {
-            if (!wordGroups[idx].includes(word)) {
-              wordGroups[idx].push(word);
-              revealed[idx].push(false);
-              changed = true;
-            }
-          });
+          continue;
         }
+
+        // 若 completedGroups 中存在与 defGroup 有交集的项，移出复习队列并把 defGroup 放到主列表顶部（作为待处理）
+        const compIdx = completedGroups.findIndex(cg => cg && Array.isArray(cg.group) && hasOverlap(cg.group, defGroup));
+        if (compIdx !== -1) {
+          // 不在载入/同步阶段自动把已进入复习队列的组移回主列表，
+          // 否则刷新会把刚完成/忘记的组又拉回主队列并可能自动 reveal。
+          // 保持 completedGroups 中的项不变，用户可通过界面手动提取查看。
+          continue;
+        }
+
+        // 否则若在任何队列都不存在，则把 defGroup 作为新组放到主列表顶部
+        const existsElsewhere = wordGroups.some(g => hasOverlap(g, defGroup)) ||
+                               completedGroups.some(cg => cg && Array.isArray(cg.group) && hasOverlap(cg.group, defGroup));
+        if (!existsElsewhere) {
+          wordGroups.unshift(defGroup.slice());
+          revealed.unshift(defGroup.map(() => false));
+          changed = true;
+        }
+      }
+
+      // 删除那些与任何 defaultGroup 都没有交集的组（认为已从 default 删除）
+      const anyDefaultHas = (grp) => defaultWordGroups.some(dg => {
+        const set = new Set(dg);
+        return grp.some(w => set.has(w));
       });
-      // 检查已完成组（不做自动合并，避免干扰复习进度）
-      if (changed) saveState();
+
+      // 从主列表移除
+      for (let i = wordGroups.length - 1; i >= 0; i--) {
+        if (!anyDefaultHas(wordGroups[i])) {
+          wordGroups.splice(i, 1);
+          revealed.splice(i, 1);
+          changed = true;
+        }
+      }
+      // 从 completedGroups 移除
+      for (let i = completedGroups.length - 1; i >= 0; i--) {
+        const cg = completedGroups[i];
+        if (!cg || !Array.isArray(cg.group)) continue;
+        if (!anyDefaultHas(cg.group)) {
+          completedGroups.splice(i, 1);
+          changed = true;
+        }
+      }
+
+      if (changed) {
+        saveState();
+      }
     }
 
     let { wordGroups, revealed, completedGroups } = loadState();
     syncNewWords();
 
+    // 返回当前到期（或无 nextReview 标记）的复习组，按到期时间升序
+    function getDueReviewGroups() {
+      const now = Date.now();
+      if (!Array.isArray(completedGroups)) return [];
+      return completedGroups
+        .filter(cg => cg && Array.isArray(cg.group))
+        .filter(cg => {
+          // 如果没有 nextReview，则视为立即到期
+          return !cg.nextReview || Number(cg.nextReview) <= now;
+        })
+        .sort((a, b) => (Number(a.nextReview) || 0) - (Number(b.nextReview) || 0));
+    }
+
     // pending selection info to pick text after render
     let pendingSelection = null;
 
+    // 选择 span 可见文本并保持页面选区（用于点击已展开的单词）
+    function selectSpanText(el) {
+      if (!el) return;
+      // 尝试找到真实的文本节点
+      let textNode = Array.from(el.childNodes).find(n => n.nodeType === Node.TEXT_NODE && n.textContent.trim().length > 0);
+      const txt = (el.textContent || '').trim();
+      if (!textNode) {
+        // 创建一个文本节点但不破坏原有结构（插在最前面）
+        textNode = document.createTextNode(txt);
+        el.insertBefore(textNode, el.firstChild || null);
+      }
+      const start = textNode.textContent.indexOf(txt);
+      const range = document.createRange();
+      range.setStart(textNode, start >= 0 ? start : 0);
+      range.setEnd(textNode, (start >= 0 ? start : 0) + txt.length);
+      const sel = window.getSelection();
+      sel.removeAllRanges();
+      sel.addRange(range);
+    }
+
     // improved pending selection: retry a few times until the element/text appears
+    // 如果选中发生在搜索输入框聚焦期间,会在选中后把焦点还回去,避免打断输入
     function performPendingSelection() {
       if (!pendingSelection) return;
+      const searchEl = document.getElementById('search-input');
+      const searchWasFocused = (searchEl && document.activeElement === searchEl);
+
       let attempts = 0;
       const maxAttempts = 8;
       const trySelect = () => {
+        // 每次尝试前再检查一遍 pendingSelection 是否还在（防止被其他代码清空）
+        if (!pendingSelection) return;
         attempts++;
         const selector = `[data-group-type="${pendingSelection.type}"][data-gi="${pendingSelection.gi}"][data-wi="${pendingSelection.wi}"]`;
         const el = document.querySelector(selector);
         if (el) {
-          // prefer a real text node child
+          // 优先选择真实文本节点
           const textNode = Array.from(el.childNodes).find(n => n.nodeType === Node.TEXT_NODE && n.textContent.trim().length > 0);
           if (textNode) {
             const range = document.createRange();
@@ -355,173 +451,115 @@
             sel.removeAllRanges();
             sel.addRange(range);
             pendingSelection = null;
+            // 如果之前搜索框在聚焦,恢复聚焦
+            if (searchWasFocused && searchEl) {
+              try { searchEl.focus({ preventScroll: true }); } catch (e) { searchEl.focus(); }
+            }
             return;
           } else {
-            // fallback: try to select the span's visible text (excluding button labels by offsets)
-            const txt = (el.textContent || '').trim();
-            if (txt) {
-              // create/ensure a text node to select from
-              let baseNode = el.firstChild && el.firstChild.nodeType === Node.TEXT_NODE ? el.firstChild : null;
-              if (!baseNode) {
-                baseNode = document.createTextNode(txt);
-                el.insertBefore(baseNode, el.firstChild || null);
-              }
-              const start = baseNode.textContent.indexOf(txt);
-              if (start >= 0) {
-                const range = document.createRange();
-                range.setStart(baseNode, start);
-                range.setEnd(baseNode, start + txt.length);
-                const sel = window.getSelection();
-                sel.removeAllRanges();
-                sel.addRange(range);
-                pendingSelection = null;
-                return;
-              }
+            // fallback: 采用 selectSpanText 工具函数
+            selectSpanText(el);
+            pendingSelection = null;
+            if (searchWasFocused && searchEl) {
+              try { searchEl.focus({ preventScroll: true }); } catch (e) { searchEl.focus(); }
             }
+            return;
           }
         }
         if (attempts < maxAttempts) {
           setTimeout(trySelect, 80);
         } else {
           pendingSelection = null;
+          if (searchWasFocused && searchEl) {
+            try { searchEl.focus({ preventScroll: true }); } catch (e) { searchEl.focus(); }
+          }
         }
       };
       // start after a short delay to allow render/paint
       setTimeout(trySelect, 0);
     }
 
-    // 判断是否需要复习
-    function getDueReviewGroups() {
-      const now = Date.now();
-      return completedGroups.filter(g => g.nextReview && g.nextReview <= now);
+    // debounce helper 用于限制渲染频率，避免输入时丢失焦点
+    function debounce(fn, wait) {
+      let t = null;
+      return function (...args) {
+        const ctx = this;
+        clearTimeout(t);
+        t = setTimeout(() => fn.apply(ctx, args), wait);
+      };
     }
 
-    // 导出功能
-    document.getElementById('export-btn').onclick = function() {
-      const data = {
-        wordGroups,
-        revealed,
-        completedGroups
-      };
-      const blob = new Blob([JSON.stringify(data, null, 2)], {type: 'application/json'});
-      const url = URL.createObjectURL(blob);
-      const a = document.createElement('a');
-      a.href = url;
-      a.download = 'word_state_' + new Date().toISOString().slice(0,10) + '.json';
-      document.body.appendChild(a);
-      a.click();
-      setTimeout(() => {
-        document.body.removeChild(a);
-        URL.revokeObjectURL(url);
-      }, 100);
-    };
-
-    // 导入功能
-    document.getElementById('import-btn').onclick = function() {
-      document.getElementById('import-file').click();
-    };
-    document.getElementById('import-file').onchange = function(e) {
-      const file = e.target.files[0];
-      if (!file) return;
-      const reader = new FileReader();
-      reader.onload = function(evt) {
-        try {
-          const data = JSON.parse(evt.target.result);
-          if (
-            data &&
-            Array.isArray(data.wordGroups) &&
-            Array.isArray(data.revealed) &&
-            Array.isArray(data.completedGroups)
-          ) {
-            wordGroups = data.wordGroups;
-            revealed = data.revealed;
-            completedGroups = data.completedGroups;
-            // 导入后同步新单词
-            syncNewWords();
-            saveState();
-            renderGroups();
-            alert('导入成功！');
-          } else {
-            alert('文件格式不正确');
-          }
-        } catch {
-          alert('文件解析失败');
-        }
-      };
-      reader.readAsText(file);
-      e.target.value = '';
-    };
-
-    // utility: Fisher–Yates shuffle (in-place)
-    function shuffleArray(arr) {
-      for (let i = arr.length - 1; i > 0; i--) {
-        const j = Math.floor(Math.random() * (i + 1));
-        [arr[i], arr[j]] = [arr[j], arr[i]];
+    // 监听搜索框输入，实时过滤显示的组（仅影响 UI、不写入 localStorage）
+    const searchInputEl = document.getElementById('search-input');
+    const debouncedUpdate = debounce((val) => {
+      const newTerm = (val || '').trim().toLowerCase();
+      const termChanged = newTerm !== searchTerm;
+      searchTerm = newTerm;
+      renderGroups();
+      // 只有搜索词变化时才尝试选中首个匹配项
+      if (termChanged && searchTerm) {
+        lastSelectedSearchTerm = searchTerm;
+        performPendingSelection();
       }
-      return arr;
+    }, 500); // 500ms 防抖，给用户更多输入时间
+
+    if (searchInputEl) {
+      searchInputEl.addEventListener('input', function () {
+        debouncedUpdate(this.value);
+      });
+      // Esc 立即清空并渲染（直接执行，不走防抖）
+      searchInputEl.addEventListener('keydown', function (e) {
+        if (e.key === 'Escape') {
+          searchTerm = '';
+          this.value = '';
+          renderGroups();
+        }
+      });
+      // 用户离开输入框时，若有待选中项，尽快尝试选中
+      searchInputEl.addEventListener('blur', function () {
+        if (pendingSelection) {
+          // 立即尝试（performPendingSelection 内部会跳过若仍在输入）
+          performPendingSelection();
+        }
+      });
     }
 
-    // shuffle words only inside each group (preserve revealed mapping)
-    document.getElementById('shuffle-in-group-btn').onclick = function() {
-      // shuffle each main group
-      wordGroups.forEach((group, gi) => {
-        if (group.length <= 1) return;
-        // create index array and shuffle it
-        const idxs = group.map((_, i) => i);
-        shuffleArray(idxs);
-        const newGroup = idxs.map(i => group[i]);
-        const newRevealed = idxs.map(i => revealed[gi][i]);
-        wordGroups[gi] = newGroup;
-        revealed[gi] = newRevealed;
-      });
-      // also shuffle inside completedGroups entries
-      completedGroups.forEach((cg) => {
-        if (!cg.group || cg.group.length <= 1) return;
-        const idxs = cg.group.map((_, i) => i);
-        shuffleArray(idxs);
-        cg.group = idxs.map(i => cg.group[i]);
-        cg.revealed = idxs.map(i => cg.revealed[i]);
-      });
-      saveState();
-      renderGroups();
-    };
-
-    // shuffle group order (main groups) while keeping internal word/revealed pairs intact
-    document.getElementById('shuffle-groups-btn').onclick = function() {
-      if (wordGroups.length <= 1) return;
-      const idxs = wordGroups.map((_, i) => i);
-      shuffleArray(idxs);
-      const newGroups = idxs.map(i => wordGroups[i]);
-      const newRevealed = idxs.map(i => revealed[i]);
-      wordGroups = newGroups;
-      revealed = newRevealed;
-      saveState();
-      renderGroups();
-    };
-
+    // 覆盖/定义最终使用的 renderGroups（带搜索过滤和自动选中首个匹配项）
     function renderGroups() {
       const groupsDiv = document.getElementById('groups');
       groupsDiv.innerHTML = '';
 
-      // 先显示需要复习的组（来自completedGroups）
+      const q = (searchTerm || '').trim().toLowerCase();
+      let firstMatchPending = null;
+
+      // helper to decide if a group matches the query
+      function groupMatches(group) {
+        if (!q) return true;
+        return group.some(w => (w || '').toLowerCase().includes(q));
+      }
+
+      // 先显示需要复习的组（来自 completedGroups）
       const dueGroups = getDueReviewGroups();
-      dueGroups.forEach((item, idx) => {
+      dueGroups.forEach((item) => {
+        if (!groupMatches(item.group)) return;
+
         const groupDiv = document.createElement('div');
         groupDiv.className = 'group';
 
-        // find actual index in completedGroups so we can mark dataset correctly
         const compIndex = completedGroups.indexOf(item);
 
-        // 每个单词只渲染 span，不再在单词内放按钮
         item.group.forEach((word, wi) => {
+          const shown = q ? true : !!item.revealed[wi];
           const btn = document.createElement('span');
-          btn.className = 'word-btn' + (item.revealed[wi] ? ' revealed' : '');
-          btn.textContent = item.revealed[wi] ? word : '●●●';
+          btn.className = 'word-btn' + (shown ? ' revealed' : '');
+          btn.textContent = shown ? word : '●●●';
           btn.dataset.groupType = 'due';
           btn.dataset.gi = compIndex;
           btn.dataset.wi = wi;
 
           btn.onclick = () => {
+            // 用户主动点击时，清除搜索产生的待选中状态
+            pendingSelection = null;
             if (item.revealed[wi]) {
               selectSpanText(btn);
               return;
@@ -531,17 +569,18 @@
             pendingSelection = { type: 'due', gi: compIndex, wi: wi };
             renderGroups();
           };
-          btn.ondblclick = (e) => {
-            // 双击保持原逻辑（用于取消/隐藏）
-            btn._skipNextClick = true;
-          };
+          btn.ondblclick = () => { btn._skipNextClick = true; };
+
+          if (q && !firstMatchPending && (word || '').toLowerCase().includes(q)) {
+            firstMatchPending = { type: 'due', gi: compIndex, wi: wi };
+          }
+
           groupDiv.appendChild(btn);
         });
 
-        // 仅当组内所有单词都已展示时，才在同一行末尾显示组操作按钮
         const allShownDue = item.group.every((_, i) => !!item.revealed[i]);
         if (allShownDue) {
-          const controls = document.createElement('span'); // 使用 span 保持在同一行
+          const controls = document.createElement('span');
           controls.style.marginLeft = '12px';
           controls.style.verticalAlign = 'middle';
 
@@ -550,26 +589,19 @@
           doneGroupBtn.style.marginRight = '8px';
           doneGroupBtn.onclick = (e) => {
             e.stopPropagation();
-            // 组内洗牌，保证下一次复现顺序不同
-            {
-              const idxs = item.group.map((_, i) => i);
-              shuffleArray(idxs);
-              item.group = idxs.map(i => item.group[i]);
-              // 复习时重置为未展示
-              item.revealed = item.group.map(() => false);
-            }
-            // 把整个 completedGroups 的该组推进到下一复习间隔或移除（全部完成）
+            const idxs = item.group.map((_, i) => i);
+            shuffleArray(idxs);
+            item.group = idxs.map(i => item.group[i]);
+            item.revealed = item.group.map(() => false);
+
             item.reviewCount = (item.reviewCount || 0) + 1;
             if (item.reviewCount < REVIEW_INTERVALS.length) {
               item.nextReview = Date.now() + REVIEW_INTERVALS[item.reviewCount] * 24 * 60 * 60 * 1000;
-              // 在窗口内注册组间洗牌
               scheduleWindowShuffle(item);
             } else {
-              // 全组复习完成，移除该 completedGroups 项
               completedGroups = completedGroups.filter(g => g !== item);
             }
             saveState();
-            // 自动展示下一个到期组的第一个单词（若存在）
             const nextDue = getDueReviewGroups().find(g => g !== item);
             if (nextDue) {
               nextDue.revealed[0] = true;
@@ -583,20 +615,16 @@
           forgotGroupBtn.textContent = '忘了';
           forgotGroupBtn.onclick = (e) => {
             e.stopPropagation();
-            // 组内洗牌，保证下一次复现顺序不同
-            {
-              const idxs = item.group.map((_, i) => i);
-              shuffleArray(idxs);
-              item.group = idxs.map(i => item.group[i]);
-            }
-            // 重置复习计数并将所有单词设为未展示，置为下次复习（首次短间隔）
+            const idxs = item.group.map((_, i) => i);
+            shuffleArray(idxs);
+            item.group = idxs.map(i => item.group[i]);
+
             item.reviewCount = 0;
             item.nextReview = Date.now() + SHORT_FORGET_MS;
             item.revealed = item.group.map(() => false);
-            // 在窗口内注册组间洗牌
             scheduleWindowShuffle(item);
             saveState();
-            // 自动展示下一个到期组的第一个单词（若存在）
+
             const nextDue2 = getDueReviewGroups().find(g => g !== item);
             if (nextDue2) {
               nextDue2.revealed[0] = true;
@@ -612,28 +640,28 @@
         groupsDiv.appendChild(groupDiv);
       });
 
-      // 再显示未完成的组
-      wordGroups.forEach((group, gi) => {
+      // 再显示未完成的主列表组
+      for (let gi = 0; gi < wordGroups.length; gi++) {
+        const group = wordGroups[gi];
+        if (!groupMatches(group)) continue;
+
         const groupDiv = document.createElement('div');
         groupDiv.className = 'group';
 
         group.forEach((word, wi) => {
+          const shown = q ? true : !!revealed[gi][wi];
           const btn = document.createElement('span');
-          btn.className = 'word-btn' + (revealed[gi][wi] ? ' revealed' : '');
-          btn.textContent = revealed[gi][wi] ? word : '●●●';
+          btn.className = 'word-btn' + (shown ? ' revealed' : '');
+          btn.textContent = shown ? word : '●●●';
           btn.dataset.groupType = 'main';
           btn.dataset.gi = gi;
           btn.dataset.wi = wi;
 
           btn.onclick = (e) => {
-            if (btn._skipNextClick) {
-              btn._skipNextClick = false;
-              return;
-            }
-            if (revealed[gi][wi]) {
-              selectSpanText(btn);
-              return;
-            }
+            // 用户主动点击时，清除搜索产生的待选中状态
+            pendingSelection = null;
+            if (btn._skipNextClick) { btn._skipNextClick = false; return; }
+            if (revealed[gi][wi]) { selectSpanText(btn); return; }
             revealed[gi][wi] = true;
             saveState();
             pendingSelection = { type: 'main', gi: gi, wi: wi };
@@ -646,13 +674,16 @@
             btn._skipNextClick = true;
           };
 
+          if (q && !firstMatchPending && (word || '').toLowerCase().includes(q)) {
+            firstMatchPending = { type: 'main', gi: gi, wi: wi };
+          }
+
           groupDiv.appendChild(btn);
         });
 
-        // 仅当组内所有单词都已展示时，才在同一行末尾显示组操作按钮
         const allShownMain = group.every((_, i) => !!revealed[gi][i]);
         if (allShownMain) {
-          const groupControls = document.createElement('span'); // 使用 span 保持在同一行
+          const groupControls = document.createElement('span');
           groupControls.style.marginLeft = '12px';
           groupControls.style.verticalAlign = 'middle';
 
@@ -661,7 +692,6 @@
           doneBtn.style.marginRight = '8px';
           doneBtn.onclick = (e) => {
             e.stopPropagation();
-            // 把整个组移入 completedGroups（复习队列），并组内洗牌
             const found = {
               group: group.slice(),
               revealed: group.map(() => false),
@@ -670,22 +700,18 @@
               reviewCount: 0,
               nextReview: Date.now() + REVIEW_INTERVALS[0] * 24 * 60 * 60 * 1000
             };
-            // 组内洗牌，保证下一次复现顺序不同
-            {
-              const idxs = found.group.map((_, i) => i);
-              shuffleArray(idxs);
-              found.group = idxs.map(i => found.group[i]);
-              found.revealed = found.group.map(() => false);
-            }
+            const idxs = found.group.map((_, i) => i);
+            shuffleArray(idxs);
+            found.group = idxs.map(i => found.group[i]);
+            found.revealed = found.group.map(() => false);
+
             completedGroups.push(found);
-            // 从主列表删除该组
             wordGroups.splice(gi, 1);
             revealed.splice(gi, 1);
-            // 在窗口内注册组间洗牌
             scheduleWindowShuffle(found);
             saveState();
-            // 自动展示移动后主列表中同位置的第一个单词（若存在）
-            const nextGi = gi; // 删除后下一个组会在相同索引位置
+
+            const nextGi = gi;
             if (wordGroups[nextGi] && revealed[nextGi]) {
               revealed[nextGi][0] = true;
               pendingSelection = { type: 'main', gi: nextGi, wi: 0 };
@@ -698,7 +724,6 @@
           forgotBtn.textContent = '忘了';
           forgotBtn.onclick = (e) => {
             e.stopPropagation();
-            // 把整个组移入复习队列，作为遗忘起点（组内洗牌并 reveal 全部为 false）
             const found2 = {
               group: group.slice(),
               revealed: group.map(() => false),
@@ -707,20 +732,17 @@
               reviewCount: 0,
               nextReview: Date.now() + SHORT_FORGET_MS
             };
-            // 组内洗牌
-            {
-              const idxs = found2.group.map((_, i) => i);
-              shuffleArray(idxs);
-              found2.group = idxs.map(i => found2.group[i]);
-              found2.revealed = found2.group.map(() => false);
-            }
+            const idxs = found2.group.map((_, i) => i);
+            shuffleArray(idxs);
+            found2.group = idxs.map(i => found2.group[i]);
+            found2.revealed = found2.group.map(() => false);
+
             completedGroups.push(found2);
             wordGroups.splice(gi, 1);
             revealed.splice(gi, 1);
-            // 在窗口内注册组间洗牌
             scheduleWindowShuffle(found2);
             saveState();
-            // 自动展示移动后主列表中同位置的第一个单词（若存在）
+
             const nextGi2 = gi;
             if (wordGroups[nextGi2] && revealed[nextGi2]) {
               revealed[nextGi2][0] = true;
@@ -734,45 +756,17 @@
         }
 
         groupsDiv.appendChild(groupDiv);
-      });
+      }
 
-      // after DOM built, handle any pending selection
-      performPendingSelection();
+      // 如果处于搜索并找到首个匹配项，且搜索词刚刚变化，则设置 pendingSelection
+      // 避免每次渲染都重新选中，只在搜索词变化时选中一次
+      if (q && firstMatchPending && q !== lastSelectedSearchTerm) {
+        pendingSelection = firstMatchPending;
+      }
     }
 
+    // 首次渲染
     renderGroups();
-    // helper: select visible word text inside a span (avoid selecting button labels)
-    function selectSpanText(el) {
-      if (!el) return;
-      // prefer a real text node child
-      const textNode = Array.from(el.childNodes).find(n => n.nodeType === Node.TEXT_NODE && n.textContent.trim().length > 0);
-      if (textNode) {
-        const range = document.createRange();
-        range.selectNodeContents(textNode);
-        const sel = window.getSelection();
-        sel.removeAllRanges();
-        sel.addRange(range);
-        return true;
-      }
-      // fallback: try to pick visible trimmed substring
-      const txt = (el.textContent || '').trim();
-      if (!txt) return false;
-      // ensure a base text node exists
-      let baseNode = el.firstChild && el.firstChild.nodeType === Node.TEXT_NODE ? el.firstChild : null;
-      if (!baseNode) {
-        baseNode = document.createTextNode(txt);
-        el.insertBefore(baseNode, el.firstChild || null);
-      }
-      const start = baseNode.textContent.indexOf(txt);
-      if (start < 0) return false;
-      const range = document.createRange();
-      range.setStart(baseNode, start);
-      range.setEnd(baseNode, start + txt.length);
-      const sel = window.getSelection();
-      sel.removeAllRanges();
-      sel.addRange(range);
-      return true;
-    }
   </script>
 </body>
 </html>
