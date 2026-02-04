@@ -1,0 +1,772 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <title>Word Groups Toggle & Sort</title>
+  <style>
+    body { font-family: Arial, sans-serif; padding: 20px; }
+    .group { margin-bottom: 24px; }
+    .word-btn {
+      display: inline-block;
+      margin: 4px 6px;
+      padding: 8px 18px;
+      background: #eee;
+      border: 1px solid #ccc;
+      border-radius: 6px;
+      cursor: pointer;
+      min-width: 60px;
+      text-align: center;
+      transition: background 0.2s;
+    }
+    .word-btn.revealed {
+      background: #d1e7dd;
+      color: #222;
+      border-color: #bcd0c7;
+    }
+    .group-title {
+      font-weight: bold;
+      margin-bottom: 6px;
+      color: #2a4d69;
+    }
+    .btn-bar {
+      position: sticky;
+      top: 0;
+      background: #fff;
+      z-index: 10;
+      padding: 12px 0 16px 0;
+      margin-bottom: 18px;
+      border-bottom: 1px solid #eee;
+    }
+    .btn-bar button {
+      margin-right: 12px;
+      padding: 10px 22px;
+      font-size: 16px;
+      background: #4d90fe;
+      color: #fff;
+      border: none;
+      border-radius: 6px;
+      cursor: pointer;
+      transition: background 0.2s;
+    }
+    .btn-bar button:hover {
+      background: #357ae8;
+    }
+  </style>
+</head>
+<body>
+  <div class="btn-bar">
+    <button id="export-btn">导出</button>
+    <button id="import-btn">导入</button>
+    <button id="shuffle-in-group-btn" title="组内洗牌">组内洗牌</button>
+    <button id="shuffle-groups-btn" title="组间洗牌">组间洗牌</button>
+    <input type="file" id="import-file" style="display:none" accept=".json,.txt">
+    <input id="search-input" placeholder="搜索单词（实时匹配）" style="margin-left:12px;padding:8px 12px;" />
+  </div>
+  <div id="groups"></div>
+  
+  <script>
+    const STORAGE_KEY = 'wordGroupsAppData_v1';
+    const REVIEW_INTERVALS = [1, 2, 4, 7, 15]; // 单位：天，可调整
+    const SHORT_FORGET_MS = 10 * 60 * 1000; // 忘记后首次重现：10 分钟
+
+    // recent-window 用于组间洗牌（10 分钟窗口）
+    let recentWindow = {
+      items: new Set(), // 存放 completedGroups 中的引用
+      start: null,
+      timer: null,
+      WINDOW_MS: 10 * 60 * 1000
+    };
+    // 当前搜索词（仅用于 UI 过滤，不保存到 localStorage）
+    let searchTerm = '';
+    // 上一次触发选中的搜索词（用于判断是否需要重新选中）
+    let lastSelectedSearchTerm = '';
+
+    function scheduleWindowShuffle(groupRef) {
+      // 把该组标记到窗口集合
+      recentWindow.items.add(groupRef);
+      if (!recentWindow.start) {
+        recentWindow.start = Date.now();
+        recentWindow.timer = setTimeout(finalizeWindowShuffle, recentWindow.WINDOW_MS);
+      }
+    }
+
+    function finalizeWindowShuffle() {
+      if (recentWindow.items.size > 0) {
+        // 取出需重排的项并随机顺序
+        const items = Array.from(recentWindow.items);
+        shuffleArray(items);
+        // 将“遗忘/复位”（reviewCount === 0）项优先放前面
+        const forgotten = items.filter(it => (it.reviewCount || 0) === 0);
+        const learned = items.filter(it => (it.reviewCount || 0) > 0);
+        const ordered = [...forgotten, ...learned];
+
+        // 从 completedGroups 中移除这些项
+        completedGroups = completedGroups.filter(g => !recentWindow.items.has(g));
+        // 将乱序后的项插回到原来最早的位置（或末尾）
+        const originalPositions = ordered
+          .map(it => completedGroups.indexOf(it))
+          .filter(i => i >= 0)
+          .sort((a, b) => a - b);
+        const insertAt = originalPositions.length ? originalPositions[0] : completedGroups.length;
+        completedGroups.splice(insertAt, 0, ...ordered);
+      }
+      // 清理窗口状态
+      recentWindow.items.clear();
+      recentWindow.start = null;
+      if (recentWindow.timer) {
+        clearTimeout(recentWindow.timer);
+        recentWindow.timer = null;
+      }
+      saveState();
+      renderGroups();
+    }
+
+    const defaultWordGroups = [
+      ["tap", "tap into"],
+      ["strike","stroke","struck","stoke"],
+      ["considerable", "considerate",'sss'],
+      ["initiative", "initiate", "initial", "initial"],
+      ["panoramic", "promenade", "lemonade"],
+      ["prey", "predator", "predate", "pray", "priest"],
+      ["inhabit", "habitat", "habitation", "inhabitant"],
+      ["epidemic", "endemic"],
+      ["eternal", "ethereal"],
+      ["turf", "tuft"],
+      ["aboard", "abroad", "board"],
+      ["cottage", "cabbage", "carriage"],
+      ["equine", "aquatic"],
+      ["boast", "boost"],
+      ["scrub", "succumb", "scurry"],
+      ["spirit", "sprite"],
+      ["indulging", "undulating"],
+      ["flip", "flap"],
+      ["captivate", "captive", "capture"],
+      ["lag", "lug", "tug"],
+      ["loyal", "royal"],
+      ["rustic", "rust", "rustle", "russet", "lush", "lash", "lust"],
+      ["participate", "precipitate", "anticipate"],
+      ["unite", "unit"],
+      ["potato", "tomato"],
+      ["couch", "coach"],
+      ["avenue", "venue", "convention"],
+      ["vibrant", "vibrance", "vibe"],
+      ["flank", "plank"],
+      ["pedal", "paddle"],
+      ["dust", "dusk", "dawn"],
+      ["adorn", "adore"],
+      ["bow", "bowl"],
+      ["spire", "spine", "spindly", "spindly", "spin"],
+      ["stew", "strew", "straw"],
+      ["captain", "subtitle", "caption"],
+      ["sector", "section"],
+      ["torch", "torture"],
+      ["wonder", "wander"],
+      ["concentric", "concentrate"],
+      ["stump", "stamp"],
+      ["recline", "decline", "incline"],
+      ["rumble", "scramble", "ramble"],
+      ["hammock", "hummock"],
+      ["forage", "forge", "foliage"],
+      ["swamp", "swath"],
+      ["clamp", "clump"],
+      ["crucial", "cruel"],
+      ["hospitable", "hostile"],
+      ["tempt", "attempt"],
+      ["lavender", "vanilla"],
+      ["assume", "unassuming"],
+      ["reed", "reef"],
+      ["specialist", "specialize", "special", "specialty"],
+      ["handful", "handy"],
+      ["incentive", "sensitive", "sensitize"],
+      ["rough", "rugged", "jagged"],
+      ["leash", "lease"],
+      ["beckon", "reckon"],
+      ["spin", "spindly"],
+      ["morale", "moral", "mortal", "Immortal"],
+      ["doorway", "doorstep"],
+      ["evocative", "exacerbation", "evacuation", "excavation"],
+      ["terrain", "terraced"],
+      ["groves", "gloves"],
+      ["geologic", "geometric", "geographic", "geothermal", "geology"],
+      ["intend", "tend"],
+      ["turn around", "round"],
+      ["fudge", "fungus"],
+      ["perspective", "perception", "prospect"],
+      ["circumstance", "perimeter", "circumference"],
+      ["proximity", "approximate"],
+      ["breathe", "breath"],
+      ["wiggle", "wobble"],
+      ["leisure", "luxury"],
+      ["flip", "flap"],
+      ["juvenile", "rejuvenate"],
+      ["ripple", "rip", "ripping"],
+      ["stalk", "stake", "steak"],
+      ["squelch", "squeal", "squeeze"],
+      ["alien", "ally"],
+      ["appropriate adj", "appropriate v"],
+      ["billow", "blow"],
+      ["serenity", "serene"],
+      ["hushed", "hustled"],
+      ["deck", "desk", "dock"],
+      ["cedar", "cider"],
+      ["strap", "strip", "stride", "string"],
+      ["tilt", "lilt"],
+      ["pinnacle", "barnacle"],
+      ["spine", "spire"],
+      ["crest", "crescent"],
+      ["chill", "chilly"],
+      ["cranial", "crane"],
+      ["scorch", "scour"],
+      ["shuffle", "commute", "shuttle"],
+      ["joint", "jolt"],
+      ["bend", "blend"],
+      ["founder", "funder", "fund", "found", "find"],
+      ["reverse", "revert"],
+      ["compete", "complete"],
+      ["brake", "bake"],
+      ["creative", "intellectual", "innovative", "ingenuity"],
+      ["capital", "capita"],
+      ["nocturnal", "necropolis"],
+      ["pitch", "ditch"],
+      ["lick", "flick"],
+      ["mood", "moor"],
+      ["glacier", "glacial"],
+      ["yurt", "yacht"],
+      ["par for the course"],
+      ["toward(s) the south", "due south"],
+      ["gaze", "glaze"],
+      ["interference", "intervening", "intervene"],
+      ["raven", "ravine"],
+      ["roar", "roam"],
+      ["affront", "confront", "comfort"],
+      ["sign", "sigh"],
+      ["tense", "intense"],
+      ["visualize", "vision"],
+      ["comprehensive", "comprehension"],
+      ["prior", "priority"],
+      ["isolated", "insulated"],
+      ["bath", "bathe"],
+      ["born to", "born from", "dairy farm"],
+      ["radical", "radiate"],
+      ["plate", "platter", "tray"],
+      ["picky", "prick"],
+      ["complain", "comply", "comprise"],
+      ["runway", "runaway"],
+      ["tuxedo", "detox", "toxic"],
+      ["toll", "tow", "toe"],
+      ["tycoon", "magnate", "mogul", "magnet"],
+      ["tick", "ticket"],
+      ["mock v", "mock adj"],
+      ["squad", "squid"],
+      ["synonym", "synonymous"],
+      ["thrive", "strive"],
+      ["ceremony", "cemetery"],
+      ["spot - plot"],
+      ["rustic"],
+      ["assuming", "unassuming"],
+      ["grin", "grind"],
+      ["illuminate", "illusion"],
+      ["haunt", "haul", "hound"],
+      ["diesel", "kerosene", "petrol"],
+      ["entwined", "intertwined"],
+      ["across the street from 。。。"],
+      ["sold out weeks in advance", "sold out in weeks"],
+      ["sold out weeks in advance = 提前几周售罄（强调提前量）", "sold out in weeks = 几周内售罄（强调用时）"],
+      ["spectrum", "spectre"],
+      ["repute", "dispute", "deputy"],
+      ["sturdy", "steady"],
+      ["descent"],
+      ["stake"],
+      ["helm", "helmet", "hamlet"],
+      ["lurk", "lurch"],
+      ["crater", "crate", "cater"],
+      ["burn", "burnt", "burnt"],
+      ["iron", "steel", "copper", "aluminium"]
+    ];
+
+    function loadState() {
+      try {
+        const data = JSON.parse(localStorage.getItem(STORAGE_KEY));
+        if (
+          data &&
+          Array.isArray(data.wordGroups) &&
+          Array.isArray(data.revealed) &&
+          Array.isArray(data.completedGroups)
+        ) {
+          return data;
+        }
+      } catch {}
+      return {
+        wordGroups: JSON.parse(JSON.stringify(defaultWordGroups)),
+        revealed: defaultWordGroups.map(group => group.map(() => false)),
+        completedGroups: []
+      };
+    }
+
+    function saveState() {
+      localStorage.setItem(STORAGE_KEY, JSON.stringify({
+        wordGroups,
+        revealed,
+        completedGroups
+      }));
+    }
+
+    // 检查defaultWordGroups是否有新单词或组内变化，自动加入/更新主队列并移除复习队列中的重复项
+    function syncNewWords() {
+      let changed = false;
+
+      // helper: 检查两组是否有交集
+      function hasOverlap(a, b) {
+        const setB = new Set(b);
+        return a.some(x => setB.has(x));
+      }
+
+      // 对每个 defaultGroup：若主列表没有完全相同的组，则确保页面最前有一份以 default 为准的组
+      for (const defGroup of defaultWordGroups) {
+        // 若主列表已有完全相同的组（顺序也相同），跳过
+        const defKey = JSON.stringify(defGroup);
+        const mainExact = wordGroups.findIndex(g => JSON.stringify(g) === defKey);
+        if (mainExact !== -1) continue;
+
+        // 若主列表中存在与 defGroup 有交集但不完全相同的组，移除旧组并把 defGroup 放到顶部（覆盖并视为更新）
+        const mainOverlapIdx = wordGroups.findIndex(g => hasOverlap(g, defGroup));
+        if (mainOverlapIdx !== -1) {
+          wordGroups.splice(mainOverlapIdx, 1);
+          revealed.splice(mainOverlapIdx, 1);
+          wordGroups.unshift(defGroup.slice());
+          revealed.unshift(defGroup.map(() => false));
+          changed = true;
+          continue;
+        }
+
+        // 若 completedGroups 中存在与 defGroup 有交集的项，移出复习队列并把 defGroup 放到主列表顶部（作为待处理）
+        const compIdx = completedGroups.findIndex(cg => cg && Array.isArray(cg.group) && hasOverlap(cg.group, defGroup));
+        if (compIdx !== -1) {
+          // 不在载入/同步阶段自动把已进入复习队列的组移回主列表，
+          // 否则刷新会把刚完成/忘记的组又拉回主队列并可能自动 reveal。
+          // 保持 completedGroups 中的项不变，用户可通过界面手动提取查看。
+          continue;
+        }
+
+        // 否则若在任何队列都不存在，则把 defGroup 作为新组放到主列表顶部
+        const existsElsewhere = wordGroups.some(g => hasOverlap(g, defGroup)) ||
+                               completedGroups.some(cg => cg && Array.isArray(cg.group) && hasOverlap(cg.group, defGroup));
+        if (!existsElsewhere) {
+          wordGroups.unshift(defGroup.slice());
+          revealed.unshift(defGroup.map(() => false));
+          changed = true;
+        }
+      }
+
+      // 删除那些与任何 defaultGroup 都没有交集的组（认为已从 default 删除）
+      const anyDefaultHas = (grp) => defaultWordGroups.some(dg => {
+        const set = new Set(dg);
+        return grp.some(w => set.has(w));
+      });
+
+      // 从主列表移除
+      for (let i = wordGroups.length - 1; i >= 0; i--) {
+        if (!anyDefaultHas(wordGroups[i])) {
+          wordGroups.splice(i, 1);
+          revealed.splice(i, 1);
+          changed = true;
+        }
+      }
+      // 从 completedGroups 移除
+      for (let i = completedGroups.length - 1; i >= 0; i--) {
+        const cg = completedGroups[i];
+        if (!cg || !Array.isArray(cg.group)) continue;
+        if (!anyDefaultHas(cg.group)) {
+          completedGroups.splice(i, 1);
+          changed = true;
+        }
+      }
+
+      if (changed) {
+        saveState();
+      }
+    }
+
+    let { wordGroups, revealed, completedGroups } = loadState();
+    syncNewWords();
+
+    // 返回当前到期（或无 nextReview 标记）的复习组，按到期时间升序
+    function getDueReviewGroups() {
+      const now = Date.now();
+      if (!Array.isArray(completedGroups)) return [];
+      return completedGroups
+        .filter(cg => cg && Array.isArray(cg.group))
+        .filter(cg => {
+          // 如果没有 nextReview，则视为立即到期
+          return !cg.nextReview || Number(cg.nextReview) <= now;
+        })
+        .sort((a, b) => (Number(a.nextReview) || 0) - (Number(b.nextReview) || 0));
+    }
+
+    // pending selection info to pick text after render
+    let pendingSelection = null;
+
+    // 选择 span 可见文本并保持页面选区（用于点击已展开的单词）
+    function selectSpanText(el) {
+      if (!el) return;
+      // 尝试找到真实的文本节点
+      let textNode = Array.from(el.childNodes).find(n => n.nodeType === Node.TEXT_NODE && n.textContent.trim().length > 0);
+      const txt = (el.textContent || '').trim();
+      if (!textNode) {
+        // 创建一个文本节点但不破坏原有结构（插在最前面）
+        textNode = document.createTextNode(txt);
+        el.insertBefore(textNode, el.firstChild || null);
+      }
+      const start = textNode.textContent.indexOf(txt);
+      const range = document.createRange();
+      range.setStart(textNode, start >= 0 ? start : 0);
+      range.setEnd(textNode, (start >= 0 ? start : 0) + txt.length);
+      const sel = window.getSelection();
+      sel.removeAllRanges();
+      sel.addRange(range);
+    }
+
+    // improved pending selection: retry a few times until the element/text appears
+    // 如果选中发生在搜索输入框聚焦期间,会在选中后把焦点还回去,避免打断输入
+    function performPendingSelection() {
+      if (!pendingSelection) return;
+      const searchEl = document.getElementById('search-input');
+      const searchWasFocused = (searchEl && document.activeElement === searchEl);
+
+      let attempts = 0;
+      const maxAttempts = 8;
+      const trySelect = () => {
+        // 每次尝试前再检查一遍 pendingSelection 是否还在（防止被其他代码清空）
+        if (!pendingSelection) return;
+        attempts++;
+        const selector = `[data-group-type="${pendingSelection.type}"][data-gi="${pendingSelection.gi}"][data-wi="${pendingSelection.wi}"]`;
+        const el = document.querySelector(selector);
+        if (el) {
+          // 优先选择真实文本节点
+          const textNode = Array.from(el.childNodes).find(n => n.nodeType === Node.TEXT_NODE && n.textContent.trim().length > 0);
+          if (textNode) {
+            const range = document.createRange();
+            range.selectNodeContents(textNode);
+            const sel = window.getSelection();
+            sel.removeAllRanges();
+            sel.addRange(range);
+            pendingSelection = null;
+            // 如果之前搜索框在聚焦,恢复聚焦
+            if (searchWasFocused && searchEl) {
+              try { searchEl.focus({ preventScroll: true }); } catch (e) { searchEl.focus(); }
+            }
+            return;
+          } else {
+            // fallback: 采用 selectSpanText 工具函数
+            selectSpanText(el);
+            pendingSelection = null;
+            if (searchWasFocused && searchEl) {
+              try { searchEl.focus({ preventScroll: true }); } catch (e) { searchEl.focus(); }
+            }
+            return;
+          }
+        }
+        if (attempts < maxAttempts) {
+          setTimeout(trySelect, 80);
+        } else {
+          pendingSelection = null;
+          if (searchWasFocused && searchEl) {
+            try { searchEl.focus({ preventScroll: true }); } catch (e) { searchEl.focus(); }
+          }
+        }
+      };
+      // start after a short delay to allow render/paint
+      setTimeout(trySelect, 0);
+    }
+
+    // debounce helper 用于限制渲染频率，避免输入时丢失焦点
+    function debounce(fn, wait) {
+      let t = null;
+      return function (...args) {
+        const ctx = this;
+        clearTimeout(t);
+        t = setTimeout(() => fn.apply(ctx, args), wait);
+      };
+    }
+
+    // 监听搜索框输入，实时过滤显示的组（仅影响 UI、不写入 localStorage）
+    const searchInputEl = document.getElementById('search-input');
+    const debouncedUpdate = debounce((val) => {
+      const newTerm = (val || '').trim().toLowerCase();
+      const termChanged = newTerm !== searchTerm;
+      searchTerm = newTerm;
+      renderGroups();
+      // 只有搜索词变化时才尝试选中首个匹配项
+      if (termChanged && searchTerm) {
+        lastSelectedSearchTerm = searchTerm;
+        performPendingSelection();
+      }
+    }, 500); // 500ms 防抖，给用户更多输入时间
+
+    if (searchInputEl) {
+      searchInputEl.addEventListener('input', function () {
+        debouncedUpdate(this.value);
+      });
+      // Esc 立即清空并渲染（直接执行，不走防抖）
+      searchInputEl.addEventListener('keydown', function (e) {
+        if (e.key === 'Escape') {
+          searchTerm = '';
+          this.value = '';
+          renderGroups();
+        }
+      });
+      // 用户离开输入框时，若有待选中项，尽快尝试选中
+      searchInputEl.addEventListener('blur', function () {
+        if (pendingSelection) {
+          // 立即尝试（performPendingSelection 内部会跳过若仍在输入）
+          performPendingSelection();
+        }
+      });
+    }
+
+    // 覆盖/定义最终使用的 renderGroups（带搜索过滤和自动选中首个匹配项）
+    function renderGroups() {
+      const groupsDiv = document.getElementById('groups');
+      groupsDiv.innerHTML = '';
+
+      const q = (searchTerm || '').trim().toLowerCase();
+      let firstMatchPending = null;
+
+      // helper to decide if a group matches the query
+      function groupMatches(group) {
+        if (!q) return true;
+        return group.some(w => (w || '').toLowerCase().includes(q));
+      }
+
+      // 先显示需要复习的组（来自 completedGroups）
+      const dueGroups = getDueReviewGroups();
+      dueGroups.forEach((item) => {
+        if (!groupMatches(item.group)) return;
+
+        const groupDiv = document.createElement('div');
+        groupDiv.className = 'group';
+
+        const compIndex = completedGroups.indexOf(item);
+
+        item.group.forEach((word, wi) => {
+          const shown = q ? true : !!item.revealed[wi];
+          const btn = document.createElement('span');
+          btn.className = 'word-btn' + (shown ? ' revealed' : '');
+          btn.textContent = shown ? word : '●●●';
+          btn.dataset.groupType = 'due';
+          btn.dataset.gi = compIndex;
+          btn.dataset.wi = wi;
+
+          btn.onclick = () => {
+            // 用户主动点击时，清除搜索产生的待选中状态
+            pendingSelection = null;
+            if (item.revealed[wi]) {
+              selectSpanText(btn);
+              return;
+            }
+            item.revealed[wi] = true;
+            saveState();
+            pendingSelection = { type: 'due', gi: compIndex, wi: wi };
+            renderGroups();
+          };
+          btn.ondblclick = () => { btn._skipNextClick = true; };
+
+          if (q && !firstMatchPending && (word || '').toLowerCase().includes(q)) {
+            firstMatchPending = { type: 'due', gi: compIndex, wi: wi };
+          }
+
+          groupDiv.appendChild(btn);
+        });
+
+        const allShownDue = item.group.every((_, i) => !!item.revealed[i]);
+        if (allShownDue) {
+          const controls = document.createElement('span');
+          controls.style.marginLeft = '12px';
+          controls.style.verticalAlign = 'middle';
+
+          const doneGroupBtn = document.createElement('button');
+          doneGroupBtn.textContent = '完成';
+          doneGroupBtn.style.marginRight = '8px';
+          doneGroupBtn.onclick = (e) => {
+            e.stopPropagation();
+            const idxs = item.group.map((_, i) => i);
+            shuffleArray(idxs);
+            item.group = idxs.map(i => item.group[i]);
+            item.revealed = item.group.map(() => false);
+
+            item.reviewCount = (item.reviewCount || 0) + 1;
+            if (item.reviewCount < REVIEW_INTERVALS.length) {
+              item.nextReview = Date.now() + REVIEW_INTERVALS[item.reviewCount] * 24 * 60 * 60 * 1000;
+              scheduleWindowShuffle(item);
+            } else {
+              completedGroups = completedGroups.filter(g => g !== item);
+            }
+            saveState();
+            const nextDue = getDueReviewGroups().find(g => g !== item);
+            if (nextDue) {
+              nextDue.revealed[0] = true;
+              pendingSelection = { type: 'due', gi: completedGroups.indexOf(nextDue), wi: 0 };
+            }
+            renderGroups();
+          };
+          controls.appendChild(doneGroupBtn);
+
+          const forgotGroupBtn = document.createElement('button');
+          forgotGroupBtn.textContent = '忘了';
+          forgotGroupBtn.onclick = (e) => {
+            e.stopPropagation();
+            const idxs = item.group.map((_, i) => i);
+            shuffleArray(idxs);
+            item.group = idxs.map(i => item.group[i]);
+
+            item.reviewCount = 0;
+            item.nextReview = Date.now() + SHORT_FORGET_MS;
+            item.revealed = item.group.map(() => false);
+            scheduleWindowShuffle(item);
+            saveState();
+
+            const nextDue2 = getDueReviewGroups().find(g => g !== item);
+            if (nextDue2) {
+              nextDue2.revealed[0] = true;
+              pendingSelection = { type: 'due', gi: completedGroups.indexOf(nextDue2), wi: 0 };
+            }
+            renderGroups();
+          };
+          controls.appendChild(forgotGroupBtn);
+
+          groupDiv.appendChild(controls);
+        }
+
+        groupsDiv.appendChild(groupDiv);
+      });
+
+      // 再显示未完成的主列表组
+      for (let gi = 0; gi < wordGroups.length; gi++) {
+        const group = wordGroups[gi];
+        if (!groupMatches(group)) continue;
+
+        const groupDiv = document.createElement('div');
+        groupDiv.className = 'group';
+
+        group.forEach((word, wi) => {
+          const shown = q ? true : !!revealed[gi][wi];
+          const btn = document.createElement('span');
+          btn.className = 'word-btn' + (shown ? ' revealed' : '');
+          btn.textContent = shown ? word : '●●●';
+          btn.dataset.groupType = 'main';
+          btn.dataset.gi = gi;
+          btn.dataset.wi = wi;
+
+          btn.onclick = (e) => {
+            // 用户主动点击时，清除搜索产生的待选中状态
+            pendingSelection = null;
+            if (btn._skipNextClick) { btn._skipNextClick = false; return; }
+            if (revealed[gi][wi]) { selectSpanText(btn); return; }
+            revealed[gi][wi] = true;
+            saveState();
+            pendingSelection = { type: 'main', gi: gi, wi: wi };
+            renderGroups();
+          };
+          btn.ondblclick = (e) => {
+            revealed[gi][wi] = false;
+            saveState();
+            renderGroups();
+            btn._skipNextClick = true;
+          };
+
+          if (q && !firstMatchPending && (word || '').toLowerCase().includes(q)) {
+            firstMatchPending = { type: 'main', gi: gi, wi: wi };
+          }
+
+          groupDiv.appendChild(btn);
+        });
+
+        const allShownMain = group.every((_, i) => !!revealed[gi][i]);
+        if (allShownMain) {
+          const groupControls = document.createElement('span');
+          groupControls.style.marginLeft = '12px';
+          groupControls.style.verticalAlign = 'middle';
+
+          const doneBtn = document.createElement('button');
+          doneBtn.textContent = '完成';
+          doneBtn.style.marginRight = '8px';
+          doneBtn.onclick = (e) => {
+            e.stopPropagation();
+            const found = {
+              group: group.slice(),
+              revealed: group.map(() => false),
+              index: gi,
+              completedAt: Date.now(),
+              reviewCount: 0,
+              nextReview: Date.now() + REVIEW_INTERVALS[0] * 24 * 60 * 60 * 1000
+            };
+            const idxs = found.group.map((_, i) => i);
+            shuffleArray(idxs);
+            found.group = idxs.map(i => found.group[i]);
+            found.revealed = found.group.map(() => false);
+
+            completedGroups.push(found);
+            wordGroups.splice(gi, 1);
+            revealed.splice(gi, 1);
+            scheduleWindowShuffle(found);
+            saveState();
+
+            const nextGi = gi;
+            if (wordGroups[nextGi] && revealed[nextGi]) {
+              revealed[nextGi][0] = true;
+              pendingSelection = { type: 'main', gi: nextGi, wi: 0 };
+            }
+            renderGroups();
+          };
+          groupControls.appendChild(doneBtn);
+
+          const forgotBtn = document.createElement('button');
+          forgotBtn.textContent = '忘了';
+          forgotBtn.onclick = (e) => {
+            e.stopPropagation();
+            const found2 = {
+              group: group.slice(),
+              revealed: group.map(() => false),
+              index: gi,
+              completedAt: Date.now(),
+              reviewCount: 0,
+              nextReview: Date.now() + SHORT_FORGET_MS
+            };
+            const idxs = found2.group.map((_, i) => i);
+            shuffleArray(idxs);
+            found2.group = idxs.map(i => found2.group[i]);
+            found2.revealed = found2.group.map(() => false);
+
+            completedGroups.push(found2);
+            wordGroups.splice(gi, 1);
+            revealed.splice(gi, 1);
+            scheduleWindowShuffle(found2);
+            saveState();
+
+            const nextGi2 = gi;
+            if (wordGroups[nextGi2] && revealed[nextGi2]) {
+              revealed[nextGi2][0] = true;
+              pendingSelection = { type: 'main', gi: nextGi2, wi: 0 };
+            }
+            renderGroups();
+          };
+          groupControls.appendChild(forgotBtn);
+
+          groupDiv.appendChild(groupControls);
+        }
+
+        groupsDiv.appendChild(groupDiv);
+      }
+
+      // 如果处于搜索并找到首个匹配项，且搜索词刚刚变化，则设置 pendingSelection
+      // 避免每次渲染都重新选中，只在搜索词变化时选中一次
+      if (q && firstMatchPending && q !== lastSelectedSearchTerm) {
+        pendingSelection = firstMatchPending;
+      }
+    }
+
+    // 首次渲染
+    renderGroups();
+  </script>
+</body>
+</html>
