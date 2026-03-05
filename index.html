@@ -1,919 +1,979 @@
-<!DOCTYPE html>
+<!doctype html>
 <html lang="zh-CN">
-<head>
-  <meta charset="UTF-8">
-  <title>英语单词复习</title>
-  <style>
-    * { box-sizing: border-box; }
-    body { font-family: Arial, sans-serif; padding: 20px; max-width: 1200px; margin: 0 auto; }
-    
-    /* Tab 样式 */
-    .tab-bar {
-      display: flex;
-      border-bottom: 2px solid #4d90fe;
-      margin-bottom: 20px;
-    }
-    .tab-btn {
-      padding: 12px 24px;
-      font-size: 16px;
-      background: #f5f5f5;
-      border: none;
-      cursor: pointer;
-      transition: background 0.2s;
-      border-radius: 6px 6px 0 0;
-      margin-right: 4px;
-    }
-    .tab-btn:hover { background: #e0e0e0; }
-    .tab-btn.active {
-      background: #4d90fe;
-      color: #fff;
-    }
-    .tab-count {
-      font-size: 12px;
-      background: rgba(0,0,0,0.15);
-      padding: 2px 6px;
-      border-radius: 10px;
-      margin-left: 6px;
-    }
-    
-    /* 分组样式 */
-    .group {
-      margin-bottom: 16px;
-      padding: 12px;
-      background: #fafafa;
-      border-radius: 8px;
-      display: flex;
-      flex-wrap: wrap;
-      align-items: center;
-      gap: 8px;
-    }
-    .group.new-group {
-      background: #fff3cd;
-      border: 2px solid #ffc107;
-    }
-    .word-btn {
-      display: inline-block;
-      padding: 8px 18px;
-      background: #eee;
-      border: 1px solid #ccc;
-      border-radius: 6px;
-      cursor: pointer;
-      min-width: 80px;
-      text-align: center;
-      transition: background 0.2s;
-      user-select: text;
-    }
-    .word-btn.revealed {
-      background: #d1e7dd;
-      color: #222;
-      border-color: #bcd0c7;
-    }
-    .word-btn.masked {
-      background: #666;
-      color: #666;
-      letter-spacing: 2px;
-    }
-    
-    /* 操作按钮 */
-    .action-btn {
-      padding: 6px 14px;
-      font-size: 14px;
-      border: none;
-      border-radius: 4px;
-      cursor: pointer;
-      margin-left: 4px;
-    }
-    .action-btn.complete { background: #28a745; color: #fff; }
-    .action-btn.complete:hover { background: #218838; }
-    .action-btn.forget { background: #dc3545; color: #fff; }
-    .action-btn.forget:hover { background: #c82333; }
-    
-    /* Tab 内容 */
-    .tab-content { display: none; }
-    .tab-content.active { display: block; }
-    
-    /* 空状态 */
-    .empty-state {
-      text-align: center;
-      padding: 40px;
-      color: #999;
-      font-size: 16px;
-    }
-    
-    /* 测试结果 */
-    #test-results {
-      margin-top: 20px;
-      padding: 15px;
-      background: #f0f0f0;
-      border-radius: 8px;
-      display: none;
-    }
-    #test-results.show { display: block; }
-    .test-pass { color: #28a745; }
-    .test-fail { color: #dc3545; }
-    
-    /* 搜索高亮 */
-    .word-btn.search-match {
-      background: #fff3cd !important;
-      border-color: #ffc107 !important;
-      color: #222 !important;
-    }
-  </style>
-</head>
-<body>
-  <h1>📚 英语单词复习</h1>
-  
-  <div style="margin-bottom: 15px; display: flex; gap: 10px; align-items: center; flex-wrap: wrap;">
-    <button onclick="hideAllWords()" style="padding: 8px 16px; font-size: 14px; background: #6c757d; color: white; border: none; border-radius: 4px; cursor: pointer;">
-      🔒 隐藏全部
-    </button>
-    <input type="text" id="search-input" placeholder="🔍 搜索单词..." 
-           style="padding: 8px 16px; font-size: 14px; border: 1px solid #ccc; border-radius: 4px; width: 250px;"
-           oninput="handleSearchInput(this.value)">
-    <button id="clear-search-btn" onclick="clearSearch()" 
-            style="padding: 8px 16px; font-size: 14px; background: #dc3545; color: white; border: none; border-radius: 4px; cursor: pointer; display: none;">
-      ✕ 清除搜索
-    </button>
-  </div>
-  
-  <!-- 搜索结果区域 -->
-  <div id="search-results" style="display: none; margin-bottom: 20px; padding: 15px; background: #e3f2fd; border-radius: 8px; border: 2px solid #4d90fe;">
-    <h3 style="margin: 0 0 12px 0; color: #4d90fe;">🔍 搜索结果</h3>
-    <div id="search-results-content"></div>
-  </div>
-  
-  <div class="tab-bar">
-    <button class="tab-btn active" data-tab="default">
-      待复习 <span class="tab-count" id="count-default">0</span>
-    </button>
-    <button class="tab-btn" data-tab="complete">
-      已完成 <span class="tab-count" id="count-complete">0</span>
-    </button>
-    <button class="tab-btn" data-tab="forgotten">
-      忘记 <span class="tab-count" id="count-forgotten">0</span>
-    </button>
-    <button class="tab-btn" data-tab="test" style="margin-left: auto; background: #ffc107;">
-      🧪 测试
-    </button>
-  </div>
-  
-  <div id="tab-default" class="tab-content active"></div>
-  <div id="tab-complete" class="tab-content"></div>
-  <div id="tab-forgotten" class="tab-content"></div>
-  <div id="tab-test" class="tab-content">
-    <button onclick="runTests()" style="padding: 10px 20px; font-size: 16px;">运行单元测试</button>
-    <div id="test-results"></div>
-  </div>
-
-  <script>
-    // ==================== 数据定义 ====================
-    const defaultWordGroups = [
-      ['horde','herd'],
-      ['sheriff','chef'],
-      ['patron', 'patrol', 'patriot', 'petrol'],
-      ["rural","rustic"],
-      ["lush","verdant"],
-      ['meticulously', 'malicious'],
-      ["as opposed to", "instead of"],
-      ["feat", "feast"],
-      ["abundant", "abandon", "abandoned"],
-      ['scare','scarce', 'scarcity'],
-      ["shelves", "shelter"],
-      ["congested", "contingent"],
-      ["tap", "tap into"],
-      ["strike","stroke","struck","stoke"],
-      ["considerable", "considerate"],
-      ["initiative", "initiate", "initial"],
-      ["panoramic", "promenade", "lemonade"],
-      ["prey", "predator", "predate", "pray", "priest"],
-      ["inhabit", "habitat", "habitation", "inhabitant"],
-      ["epidemic", "endemic"],
-      ["eternal", "ethereal"],
-      ["turf", "tuft"],
-      ["aboard", "abroad", "board"],
-      ["cottage", "cabbage", "carriage"],
-      ["equine", "aquatic"],
-      ["boast", "boost"],
-      ["scrub", "succumb", "scurry"],
-      ["spirit", "sprite"],
-      ["indulging", "undulating"],
-      ["flip", "flap"],
-      ["captivate", "captive", "capture"],
-      ["lag", "lug", "tug"],
-      ["loyal", "royal"],
-      ["participate", "precipitate", "anticipate"],
-      ["unite", "unit"],
-      ["potato", "tomato"],
-      ["couch", "coach"],
-      ["avenue", "venue", "convention"],
-      ["vibrant", "vibrance", "vibe"],
-      ["flank", "plank"],
-      ["pedal", "paddle"],
-      ["dust", "dusk", "dawn"],
-      ["adorn", "adore"],
-      ["bow", "bowl"],
-      ["spire", "spine", "spindly", "spin"],
-      ["stew", "strew", "straw"],
-      ["captain", "subtitle", "caption"],
-      ["sector", "section"],
-      ["torch", "torture"],
-      ["wonder", "wander"],
-      ["concentric", "concentrate"],
-      ["stump", "stamp"],
-      ["recline", "decline", "incline"],
-      ["rumble", "scramble", "ramble"],
-      ["hammock", "hummock"],
-      ["forage", "forge", "foliage"],
-      ["swamp", "swath"],
-      ["clamp", "clump"],
-      ["crucial", "cruel"],
-      ["hospitable", "hostile"],
-      ["tempt", "attempt"],
-      ["lavender", "vanilla"],
-      ["assume", "unassuming"],
-      ["reed", "reef"],
-      ["specialist", "specialize", "special", "specialty"],
-      ["handful", "handy"],
-      ["incentive", "sensitive", "sensitize"],
-      ["rough", "rugged", "jagged"],
-      ["leash", "lease"],
-      ["beckon", "reckon", "reckoning"],
-      ["morale", "moral", "mortal", "Immortal"],
-      ["doorway", "doorstep"],
-      ["evocative", "exacerbation", "evacuation", "excavation"],
-      ["terrain", "terraced"],
-      ["groves", "gloves"],
-      ["geologic", "geometric", "geographic", "geothermal", "geology"],
-      ["intend", "tend"],
-      ["fudge", "fungus"],
-      ["perspective", "perception", "prospect"],
-      ["circumstance", "perimeter", "circumference"],
-      ["proximity", "approximate"],
-      ["breathe", "breath"],
-      ["wiggle", "wobble"],
-      ["leisure", "luxury"],
-      ["juvenile", "rejuvenate"],
-      ["ripple", "rip", "ripping"],
-      ["stalk", "stake", "steak"],
-      ["squelch", "squeal", "squeeze"],
-      ["alien", "ally"],
-      ["billow", "blow"],
-      ["serenity", "serene"],
-      ["hushed", "hustled"],
-      ["deck", "desk", "dock"],
-      ["cedar", "cider"],
-      ["strap", "strip", "stride", "string"],
-      ["tilt", "lilt"],
-      ["pinnacle", "barnacle"],
-      ["crest", "crescent"],
-      ["chill", "chilly"],
-      ["cranial", "crane"],
-      ["scorch", "scour"],
-      ["shuffle", "commute", "shuttle"],
-      ["joint", "jolt"],
-      ["bend", "blend"],
-      ["founder", "funder", "fund", "found", "find"],
-      ["reverse", "revert"],
-      ["compete", "complete"],
-      ["brake", "bake"],
-      ["creative", "intellectual", "innovative", "ingenuity"],
-      ["capital", "capita"],
-      ["nocturnal", "necropolis"],
-      ["pitch", "ditch"],
-      ["lick", "flick"],
-      ["mood", "moor"],
-      ["glacier", "glacial"],
-      ["yurt", "yacht"],
-      ["gaze", "glaze"],
-      ["interference", "intervening", "intervene"],
-      ["raven", "ravine"],
-      ["roar", "roam"],
-      ["affront", "confront", "comfort"],
-      ["sign", "sigh"],
-      ["tense", "intense"],
-      ["visualize", "vision"],
-      ["comprehensive", "comprehension"],
-      ["prior", "priority"],
-      ["isolated", "insulated"],
-      ["bath", "bathe"],
-      ["radical", "radiate"],
-      ["plate", "platter", "tray"],
-      ["picky", "prick"],
-      ["complain", "comply", "comprise"],
-      ["runway", "runaway"],
-      ["tuxedo", "detox", "toxic"],
-      ["toll", "tow", "toe"],
-      ["tycoon", "magnate", "mogul", "magnet"],
-      ["tick", "ticket"],
-      ["squad", "squid"],
-      ["synonym", "synonymous"],
-      ["thrive", "strive"],
-      ["ceremony", "cemetery"],
-      ["grin", "grind"],
-      ["illuminate", "illusion"],
-      ["haunt", "haul", "hound"],
-      ["diesel", "kerosene", "petrol", "patrol"],
-      ["entwined", "intertwined"],
-      ["spectrum", "spectre"],
-      ["repute", "dispute", "deputy"],
-      ["sturdy", "steady"],
-      ["helm", "helmet", "hamlet"],
-      ["lurk", "lurch"],
-      ["crater", "crate", "cater"],
-      ["iron", "steel", "copper", "aluminium"]
-    ];
-
-    const STORAGE_KEY = 'englishWordReview_v3';
-    
-    // 搜索相关状态（不保存到 localStorage）
-    let searchQuery = '';
-    let searchDebounceTimer = null;
-
-    // ==================== 工具函数 ====================
-    
-    /**
-     * Fisher-Yates 洗牌算法
-     */
-    function shuffleArray(arr) {
-      const result = [...arr];
-      for (let i = result.length - 1; i > 0; i--) {
-        const j = Math.floor(Math.random() * (i + 1));
-        [result[i], result[j]] = [result[j], result[i]];
+  <head>
+    <meta charset="UTF-8" />
+    <style>
+      * {
+        box-sizing: border-box;
       }
-      return result;
-    }
-
-    /**
-     * 生成组的唯一标识符
-     */
-    function generateGroupKey(words) {
-      return [...words].sort().join('|').toLowerCase().trim();
-    }
-
-    /**
-     * 检查两个组是否有交集
-     */
-    function hasOverlap(group1, group2) {
-      const set = new Set(group2.map(w => w.toLowerCase().trim()));
-      return group1.some(w => set.has(w.toLowerCase().trim()));
-    }
-
-    /**
-     * 选中元素中的文本
-     */
-    function selectElementText(el) {
-      if (!el) return;
-      const range = document.createRange();
-      range.selectNodeContents(el);
-      const sel = window.getSelection();
-      sel.removeAllRanges();
-      sel.addRange(range);
-    }
-
-    /**
-     * 根据 defaultWordGroups 的顺序获取组的原始索引
-     */
-    function getDefaultGroupIndex(words) {
-      const key = generateGroupKey(words);
-      return defaultWordGroups.findIndex(g => generateGroupKey(g) === key);
-    }
-
-    // ==================== 搜索功能 ====================
-    
-    /**
-     * 处理搜索输入（带 debounce）
-     */
-    function handleSearchInput(value) {
-      if (searchDebounceTimer) {
-        clearTimeout(searchDebounceTimer);
+      body {
+        font-family: Arial, sans-serif;
+        padding: 20px;
+        max-width: 1200px;
+        margin: 0 auto;
       }
-      
-      searchDebounceTimer = setTimeout(() => {
-        searchQuery = value.trim().toLowerCase();
-        renderSearch();
-      }, 200);
-    }
-    
-    /**
-     * 清除搜索
-     */
-    function clearSearch() {
-      searchQuery = '';
-      document.getElementById('search-input').value = '';
-      
-      // 清除所有搜索展开状态
-      [...state.default, ...state.complete, ...state.forgotten].forEach(item => {
-        delete item.searchRevealed;
-      });
-      
-      renderSearch();
-    }
-    
-    /**
-     * 搜索并渲染结果
-     */
-    function renderSearch() {
-      const resultsContainer = document.getElementById('search-results');
-      const resultsContent = document.getElementById('search-results-content');
-      const clearBtn = document.getElementById('clear-search-btn');
-      
-      if (!searchQuery) {
-        resultsContainer.style.display = 'none';
-        clearBtn.style.display = 'none';
-        return;
+
+      /* Tab 样式 */
+      .tab-bar {
+        display: flex;
+        border-bottom: 2px solid #4d90fe;
+        margin-bottom: 20px;
       }
-      
-      clearBtn.style.display = 'inline-block';
-      
-      // 在所有 tab 中搜索
-      const allItems = [
-        ...state.default.map((item, index) => ({ item, tab: 'default', index, tabName: '待复习' })),
-        ...state.complete.map((item, index) => ({ item, tab: 'complete', index, tabName: '已完成' })),
-        ...state.forgotten.map((item, index) => ({ item, tab: 'forgotten', index, tabName: '忘记' }))
-      ];
-      
-      // 过滤匹配的组
-      const matchedGroups = allItems.filter(({ item }) => 
-        item.words.some(word => word.toLowerCase().includes(searchQuery))
-      );
-      
-      resultsContent.innerHTML = '';
-      
-      if (matchedGroups.length === 0) {
-        resultsContent.innerHTML = '<div class="empty-state">没有找到匹配的单词</div>';
-        resultsContainer.style.display = 'block';
-        return;
+      .tab-btn {
+        padding: 12px 24px;
+        font-size: 16px;
+        background: #f5f5f5;
+        border: none;
+        cursor: pointer;
+        transition: background 0.2s;
+        border-radius: 6px 6px 0 0;
+        margin-right: 4px;
       }
-      
-      // 渲染搜索结果
-      matchedGroups.forEach(({ item, tab, tabName }) => {
-        const groupDiv = document.createElement('div');
-        groupDiv.className = 'group';
-        groupDiv.style.position = 'relative';
-        groupDiv.style.paddingTop = '20px';
-        
-        // 添加来源标签
-        const sourceTag = document.createElement('span');
-        sourceTag.style.cssText = 'position: absolute; top: 4px; right: 8px; font-size: 11px; background: #4d90fe; color: white; padding: 2px 8px; border-radius: 4px;';
-        sourceTag.textContent = tabName;
-        groupDiv.appendChild(sourceTag);
-        
-        // 使用保存的随机顺序渲染单词
-        const order = item.shuffledOrder || [...Array(item.words.length).keys()];
-        
-        // 临时状态：记录搜索结果中哪些单词已被展开（不保存到 localStorage）
-        if (!item.searchRevealed) {
-          item.searchRevealed = item.words.map(() => false);
+      .tab-btn:hover {
+        background: #e0e0e0;
+      }
+      .tab-btn.active {
+        background: #4d90fe;
+        color: #fff;
+      }
+      .tab-count {
+        font-size: 12px;
+        background: rgba(0, 0, 0, 0.15);
+        padding: 2px 6px;
+        border-radius: 10px;
+        margin-left: 6px;
+      }
+
+      /* 分组样式 */
+      .group {
+        margin-bottom: 16px;
+        padding: 12px;
+        background: #fafafa;
+        border-radius: 8px;
+        display: flex;
+        flex-wrap: wrap;
+        align-items: center;
+        gap: 8px;
+      }
+      .group.new-group {
+        background: #fff3cd;
+        border: 2px solid #ffc107;
+      }
+      .word-btn {
+        display: inline-block;
+        padding: 8px 18px;
+        background: #eee;
+        border: 1px solid #ccc;
+        border-radius: 6px;
+        cursor: pointer;
+        min-width: 80px;
+        text-align: center;
+        transition: background 0.2s;
+        user-select: text;
+      }
+      .word-btn.revealed {
+        background: #d1e7dd;
+        color: #222;
+        border-color: #bcd0c7;
+      }
+      .word-btn.masked {
+        background: #666;
+        color: #666;
+        letter-spacing: 2px;
+      }
+
+      /* 操作按钮 */
+      .action-btn {
+        padding: 6px 14px;
+        font-size: 14px;
+        border: none;
+        border-radius: 4px;
+        cursor: pointer;
+        margin-left: 4px;
+      }
+      .action-btn.complete {
+        background: #28a745;
+        color: #fff;
+      }
+      .action-btn.complete:hover {
+        background: #218838;
+      }
+      .action-btn.forget {
+        background: #dc3545;
+        color: #fff;
+      }
+      .action-btn.forget:hover {
+        background: #c82333;
+      }
+
+      /* Tab 内容 */
+      .tab-content {
+        display: none;
+      }
+      .tab-content.active {
+        display: block;
+      }
+
+      /* 空状态 */
+      .empty-state {
+        text-align: center;
+        padding: 40px;
+        color: #999;
+        font-size: 16px;
+      }
+
+      /* 测试结果 */
+      #test-results {
+        margin-top: 20px;
+        padding: 15px;
+        background: #f0f0f0;
+        border-radius: 8px;
+        display: none;
+      }
+      #test-results.show {
+        display: block;
+      }
+      .test-pass {
+        color: #28a745;
+      }
+      .test-fail {
+        color: #dc3545;
+      }
+
+      /* 搜索高亮 */
+      .word-btn.search-match {
+        background: #fff3cd !important;
+        border-color: #ffc107 !important;
+        color: #222 !important;
+      }
+    </style>
+  </head>
+  <body>
+    <!-- <h1>📚 英语单词复习</h1> -->
+
+    <div
+      style="
+        margin-bottom: 15px;
+        display: flex;
+        gap: 10px;
+        align-items: center;
+        flex-wrap: wrap;
+      "
+    >
+      <button
+        onclick="hideAllWords()"
+        style="
+          padding: 8px 16px;
+          font-size: 14px;
+          background: #6c757d;
+          color: white;
+          border: none;
+          border-radius: 4px;
+          cursor: pointer;
+        "
+      >
+        🔒 隐藏全部
+      </button>
+      <input
+        type="text"
+        id="search-input"
+        placeholder="🔍 搜索单词..."
+        style="
+          padding: 8px 16px;
+          font-size: 14px;
+          border: 1px solid #ccc;
+          border-radius: 4px;
+          width: 250px;
+        "
+        oninput="handleSearchInput(this.value)"
+      />
+      <button
+        id="clear-search-btn"
+        onclick="clearSearch()"
+        style="
+          padding: 8px 16px;
+          font-size: 14px;
+          background: #dc3545;
+          color: white;
+          border: none;
+          border-radius: 4px;
+          cursor: pointer;
+          display: none;
+        "
+      >
+        ✕ 清除搜索
+      </button>
+    </div>
+
+    <!-- 搜索结果区域 -->
+    <div
+      id="search-results"
+      style="
+        display: none;
+        margin-bottom: 20px;
+        padding: 15px;
+        background: #e3f2fd;
+        border-radius: 8px;
+        border: 2px solid #4d90fe;
+      "
+    >
+      <h3 style="margin: 0 0 12px 0; color: #4d90fe">🔍 搜索结果</h3>
+      <div id="search-results-content"></div>
+    </div>
+
+    <div class="tab-bar">
+      <button class="tab-btn active" data-tab="default">
+        待复习 <span class="tab-count" id="count-default">0</span>
+      </button>
+      <button class="tab-btn" data-tab="complete">
+        已完成 <span class="tab-count" id="count-complete">0</span>
+      </button>
+      <button class="tab-btn" data-tab="forgotten">
+        忘记 <span class="tab-count" id="count-forgotten">0</span>
+      </button>
+      <button
+        class="tab-btn"
+        data-tab="test"
+        style="margin-left: auto; background: #ffc107"
+      >
+        🧪 测试
+      </button>
+    </div>
+
+    <div id="tab-default" class="tab-content active"></div>
+    <div id="tab-complete" class="tab-content"></div>
+    <div id="tab-forgotten" class="tab-content"></div>
+    <div id="tab-test" class="tab-content">
+      <button onclick="runTests()" style="padding: 10px 20px; font-size: 16px">
+        运行单元测试
+      </button>
+      <div id="test-results"></div>
+    </div>
+    <script src="./defaultGroups.js"></script>
+    <script>
+      // ==================== 数据定义 ====================
+     
+
+      const STORAGE_KEY = "englishWordReview_v3";
+
+      // 搜索相关状态（不保存到 localStorage）
+      let searchQuery = "";
+      let searchDebounceTimer = null;
+
+      // ==================== 工具函数 ====================
+
+      /**
+       * Fisher-Yates 洗牌算法
+       */
+      function shuffleArray(arr) {
+        const result = [...arr];
+        for (let i = result.length - 1; i > 0; i--) {
+          const j = Math.floor(Math.random() * (i + 1));
+          [result[i], result[j]] = [result[j], result[i]];
         }
-        
-        order.forEach(originalIndex => {
+        return result;
+      }
+
+      /**
+       * 生成组的唯一标识符
+       */
+      function generateGroupKey(words) {
+        return [...words].sort().join("|").toLowerCase().trim();
+      }
+
+      /**
+       * 检查两个组是否有交集
+       */
+      function hasOverlap(group1, group2) {
+        const set = new Set(group2.map((w) => w.toLowerCase().trim()));
+        return group1.some((w) => set.has(w.toLowerCase().trim()));
+      }
+
+      /**
+       * 选中元素中的文本
+       */
+      function selectElementText(el) {
+        if (!el) return;
+        const range = document.createRange();
+        range.selectNodeContents(el);
+        const sel = window.getSelection();
+        sel.removeAllRanges();
+        sel.addRange(range);
+      }
+
+      /**
+       * 根据 defaultWordGroups 的顺序获取组的原始索引
+       */
+      function getDefaultGroupIndex(words) {
+        const key = generateGroupKey(words);
+        return defaultWordGroups.findIndex((g) => generateGroupKey(g) === key);
+      }
+
+      // ==================== 搜索功能 ====================
+
+      /**
+       * 处理搜索输入（带 debounce）
+       */
+      function handleSearchInput(value) {
+        if (searchDebounceTimer) {
+          clearTimeout(searchDebounceTimer);
+        }
+
+        searchDebounceTimer = setTimeout(() => {
+          searchQuery = value.trim().toLowerCase();
+          renderSearch();
+        }, 200);
+      }
+
+      /**
+       * 清除搜索
+       */
+      function clearSearch() {
+        searchQuery = "";
+        document.getElementById("search-input").value = "";
+
+        // 清除所有搜索展开状态
+        [...state.default, ...state.complete, ...state.forgotten].forEach(
+          (item) => {
+            delete item.searchRevealed;
+          },
+        );
+
+        renderSearch();
+      }
+
+      /**
+       * 搜索并渲染结果
+       */
+      function renderSearch() {
+        const resultsContainer = document.getElementById("search-results");
+        const resultsContent = document.getElementById(
+          "search-results-content",
+        );
+        const clearBtn = document.getElementById("clear-search-btn");
+
+        if (!searchQuery) {
+          resultsContainer.style.display = "none";
+          clearBtn.style.display = "none";
+          return;
+        }
+
+        clearBtn.style.display = "inline-block";
+
+        // 在所有 tab 中搜索
+        const allItems = [
+          ...state.default.map((item, index) => ({
+            item,
+            tab: "default",
+            index,
+            tabName: "待复习",
+          })),
+          ...state.complete.map((item, index) => ({
+            item,
+            tab: "complete",
+            index,
+            tabName: "已完成",
+          })),
+          ...state.forgotten.map((item, index) => ({
+            item,
+            tab: "forgotten",
+            index,
+            tabName: "忘记",
+          })),
+        ];
+
+        // 过滤匹配的组
+        const matchedGroups = allItems.filter(({ item }) =>
+          item.words.some((word) => word.toLowerCase().includes(searchQuery)),
+        );
+
+        resultsContent.innerHTML = "";
+
+        if (matchedGroups.length === 0) {
+          resultsContent.innerHTML =
+            '<div class="empty-state">没有找到匹配的单词</div>';
+          resultsContainer.style.display = "block";
+          return;
+        }
+
+        // 渲染搜索结果
+        matchedGroups.forEach(({ item, tab, tabName }) => {
+          const groupDiv = document.createElement("div");
+          groupDiv.className = "group";
+          groupDiv.style.position = "relative";
+          groupDiv.style.paddingTop = "20px";
+
+          // 添加来源标签
+          const sourceTag = document.createElement("span");
+          sourceTag.style.cssText =
+            "position: absolute; top: 4px; right: 8px; font-size: 11px; background: #4d90fe; color: white; padding: 2px 8px; border-radius: 4px;";
+          sourceTag.textContent = tabName;
+          groupDiv.appendChild(sourceTag);
+
+          // 使用保存的随机顺序渲染单词
+          const order = item.shuffledOrder || [
+            ...Array(item.words.length).keys(),
+          ];
+
+          // 临时状态：记录搜索结果中哪些单词已被展开（不保存到 localStorage）
+          if (!item.searchRevealed) {
+            item.searchRevealed = item.words.map(() => false);
+          }
+
+          order.forEach((originalIndex) => {
+            const word = item.words[originalIndex];
+            const isMatched = word.toLowerCase().includes(searchQuery);
+            const isSearchRevealed = item.searchRevealed[originalIndex];
+            const shouldReveal = isMatched || isSearchRevealed;
+
+            const btn = document.createElement("span");
+            btn.className =
+              "word-btn " +
+              (shouldReveal
+                ? isMatched
+                  ? "revealed search-match"
+                  : "revealed"
+                : "masked");
+            btn.textContent = shouldReveal ? word : "●●●";
+
+            btn.onclick = function () {
+              if (shouldReveal) {
+                selectElementText(btn);
+              } else {
+                // 展开这个单词（仅在搜索结果中）
+                item.searchRevealed[originalIndex] = true;
+                renderSearch(); // 重新渲染搜索结果
+              }
+            };
+
+            groupDiv.appendChild(btn);
+          });
+
+          resultsContent.appendChild(groupDiv);
+        });
+
+        resultsContainer.style.display = "block";
+      }
+
+      // ==================== 状态管理 ====================
+
+      let state = {
+        default: [],
+        complete: [],
+        forgotten: [],
+      };
+
+      function loadState() {
+        try {
+          const data = JSON.parse(localStorage.getItem(STORAGE_KEY));
+          if (data && data.default && data.complete && data.forgotten) {
+            // 确保所有加载的项都有 isNew 属性
+            [...data.default, ...data.complete, ...data.forgotten].forEach(item => {
+              if (!('isNew' in item)) {
+                item.isNew = false;
+              }
+            });
+            return data;
+          }
+        } catch (e) {
+          console.error("加载状态失败:", e);
+        }
+        return { default: [], complete: [], forgotten: [] };
+      }
+
+      function saveState() {
+        localStorage.setItem(STORAGE_KEY, JSON.stringify(state));
+      }
+
+      function createGroupItem(words, originalIndex, isNew = false) {
+        return {
+          words: [...words],
+          revealed: words.map(() => false),
+          originalIndex: originalIndex,
+          isNew: isNew,
+          shuffledOrder: shuffleArray([...Array(words.length).keys()]),
+        };
+      }
+
+      function syncWithDefaultGroups() {
+        const defaultKeys = new Set(
+          defaultWordGroups.map((g) => generateGroupKey(g)),
+        );
+        const topGroups = [];
+
+        state.complete = state.complete.filter((item) => {
+          const key = generateGroupKey(item.words);
+          const exactMatch = defaultKeys.has(key);
+          const hasMatch = defaultWordGroups.some((dg) =>
+            hasOverlap(item.words, dg),
+          );
+
+          if (!hasMatch) return false;
+          if (!exactMatch && hasMatch) {
+            const newVersion = defaultWordGroups.find((dg) =>
+              hasOverlap(item.words, dg),
+            );
+            if (newVersion) {
+              const idx = defaultWordGroups.indexOf(newVersion);
+              topGroups.push(createGroupItem(newVersion, idx, true));
+            }
+            return false;
+          }
+          item.originalIndex = defaultWordGroups.findIndex(
+            (dg) => generateGroupKey(dg) === key,
+          );
+          return true;
+        });
+
+        state.forgotten = state.forgotten.filter((item) => {
+          const key = generateGroupKey(item.words);
+          const exactMatch = defaultKeys.has(key);
+          const hasMatch = defaultWordGroups.some((dg) =>
+            hasOverlap(item.words, dg),
+          );
+
+          if (!hasMatch) return false;
+          if (!exactMatch && hasMatch) {
+            const newVersion = defaultWordGroups.find((dg) =>
+              hasOverlap(item.words, dg),
+            );
+            if (newVersion) {
+              const idx = defaultWordGroups.indexOf(newVersion);
+              topGroups.push(createGroupItem(newVersion, idx, true));
+            }
+            return false;
+          }
+          item.originalIndex = defaultWordGroups.findIndex(
+            (dg) => generateGroupKey(dg) === key,
+          );
+          return true;
+        });
+
+        state.default = state.default.filter((item) => {
+          const key = generateGroupKey(item.words);
+          const exactMatch = defaultKeys.has(key);
+          const hasMatch = defaultWordGroups.some((dg) =>
+            hasOverlap(item.words, dg),
+          );
+
+          if (!hasMatch) return false;
+          if (!exactMatch && hasMatch) {
+            const newVersion = defaultWordGroups.find((dg) =>
+              hasOverlap(item.words, dg),
+            );
+            if (newVersion) {
+              const idx = defaultWordGroups.indexOf(newVersion);
+              topGroups.push(createGroupItem(newVersion, idx, true));
+            }
+            return false;
+          }
+          item.originalIndex = defaultWordGroups.findIndex(
+            (dg) => generateGroupKey(dg) === key,
+          );
+          // 保留已有的 isNew 状态，不强制设置为 false
+          return true;
+        });
+
+        const allExistingKeys = new Set([
+          ...state.default.map((item) => generateGroupKey(item.words)),
+          ...state.complete.map((item) => generateGroupKey(item.words)),
+          ...state.forgotten.map((item) => generateGroupKey(item.words)),
+          ...topGroups.map((item) => generateGroupKey(item.words)),
+        ]);
+
+        for (let i = 0; i < defaultWordGroups.length; i++) {
+          const group = defaultWordGroups[i];
+          const key = generateGroupKey(group);
+          if (!allExistingKeys.has(key)) {
+            const hasOverlapWithExisting = [
+              ...state.default,
+              ...state.complete,
+              ...state.forgotten,
+              ...topGroups,
+            ].some((item) => hasOverlap(item.words, group));
+
+            if (!hasOverlapWithExisting) {
+              topGroups.push(createGroupItem(group, i, true));
+            }
+          }
+        }
+
+        state.default.sort((a, b) => {
+          // 优先按 isNew 排序（新组在前），再按 originalIndex 排序
+          if (a.isNew !== b.isNew) {
+            return b.isNew ? 1 : -1;
+          }
+          return a.originalIndex - b.originalIndex;
+        });
+        topGroups.sort((a, b) => a.originalIndex - b.originalIndex);
+        state.default = [...topGroups, ...state.default];
+
+        saveState();
+      }
+
+      // ==================== 组操作函数 ====================
+
+      function hideAllWords() {
+        const activeTab = document.querySelector(".tab-btn.active").dataset.tab;
+        if (activeTab === "test") return;
+
+        state[activeTab].forEach((item) => {
+          item.revealed = item.words.map(() => false);
+        });
+        saveState();
+        render();
+      }
+
+      function revealWord(tab, groupIndex, wordIndex) {
+        state[tab][groupIndex].revealed[wordIndex] = true;
+        saveState();
+        render();
+      }
+
+      function hideWord(tab, groupIndex, wordIndex) {
+        state[tab][groupIndex].revealed[wordIndex] = false;
+        saveState();
+        render();
+      }
+
+      function moveToComplete(fromTab, groupIndex) {
+        const [item] = state[fromTab].splice(groupIndex, 1);
+        item.revealed = item.words.map(() => false);
+        item.isNew = false;
+        item.shuffledOrder = shuffleArray([...Array(item.words.length).keys()]);
+        state.complete.push(item);
+        state.complete.sort((a, b) => a.originalIndex - b.originalIndex);
+        saveState();
+        render();
+      }
+
+      function moveToForgotten(fromTab, groupIndex) {
+        const [item] = state[fromTab].splice(groupIndex, 1);
+        item.revealed = item.words.map(() => false);
+        item.isNew = false;
+        item.shuffledOrder = shuffleArray([...Array(item.words.length).keys()]);
+        state.forgotten.push(item);
+        state.forgotten.sort((a, b) => a.originalIndex - b.originalIndex);
+        saveState();
+        render();
+      }
+
+      function moveToDefault(fromTab, groupIndex) {
+        const [item] = state[fromTab].splice(groupIndex, 1);
+        item.revealed = item.words.map(() => false);
+        item.isNew = false;
+        item.shuffledOrder = shuffleArray([...Array(item.words.length).keys()]);
+
+        let insertIndex = state.default.findIndex(
+          (g) => !g.isNew && g.originalIndex > item.originalIndex,
+        );
+        if (insertIndex === -1) {
+          insertIndex = state.default.length;
+        }
+        state.default.splice(insertIndex, 0, item);
+
+        saveState();
+        render();
+      }
+
+      // ==================== 渲染函数 ====================
+
+      function getShuffledOrder(length) {
+        return shuffleArray([...Array(length).keys()]);
+      }
+
+      function renderGroup(item, tab, groupIndex) {
+        const groupDiv = document.createElement("div");
+        groupDiv.className = "group" + (item.isNew ? " new-group" : "");
+
+        const allRevealed = item.revealed.every((r) => r);
+
+        if (
+          !item.shuffledOrder ||
+          item.shuffledOrder.length !== item.words.length
+        ) {
+          item.shuffledOrder = shuffleArray([
+            ...Array(item.words.length).keys(),
+          ]);
+          saveState();
+        }
+
+        item.shuffledOrder.forEach((originalIndex) => {
           const word = item.words[originalIndex];
-          const isMatched = word.toLowerCase().includes(searchQuery);
-          const isSearchRevealed = item.searchRevealed[originalIndex];
-          const shouldReveal = isMatched || isSearchRevealed;
-          
-          const btn = document.createElement('span');
-          btn.className = 'word-btn ' + (shouldReveal ? (isMatched ? 'revealed search-match' : 'revealed') : 'masked');
-          btn.textContent = shouldReveal ? word : '●●●';
-          
-          btn.onclick = function() {
-            if (shouldReveal) {
-              selectElementText(btn);
+          const isRevealed = item.revealed[originalIndex];
+
+          const btn = document.createElement("span");
+          btn.className = "word-btn " + (isRevealed ? "revealed" : "masked");
+          btn.textContent = isRevealed ? word : "●●●";
+          btn.dataset.tab = tab;
+          btn.dataset.group = groupIndex;
+          btn.dataset.word = originalIndex;
+
+          btn.onclick = function (e) {
+            if (!isRevealed) {
+              revealWord(tab, groupIndex, originalIndex);
+              setTimeout(() => {
+                const newBtn = document.querySelector(
+                  `.word-btn[data-tab="${tab}"][data-group="${groupIndex}"][data-word="${originalIndex}"]`,
+                );
+                if (newBtn) selectElementText(newBtn);
+              }, 0);
             } else {
-              // 展开这个单词（仅在搜索结果中）
-              item.searchRevealed[originalIndex] = true;
-              renderSearch(); // 重新渲染搜索结果
+              selectElementText(btn);
             }
           };
-          
+
           groupDiv.appendChild(btn);
         });
-        
-        resultsContent.appendChild(groupDiv);
-      });
-      
-      resultsContainer.style.display = 'block';
-    }
 
-    // ==================== 状态管理 ====================
-    
-    let state = {
-      default: [],
-      complete: [],
-      forgotten: []
-    };
+        if (allRevealed) {
+          if (tab === "default") {
+            const completeBtn = document.createElement("button");
+            completeBtn.className = "action-btn complete";
+            completeBtn.textContent = "完成";
+            completeBtn.onclick = () => moveToComplete(tab, groupIndex);
+            groupDiv.appendChild(completeBtn);
 
-    function loadState() {
-      try {
-        const data = JSON.parse(localStorage.getItem(STORAGE_KEY));
-        if (data && data.default && data.complete && data.forgotten) {
-          return data;
-        }
-      } catch (e) {
-        console.error('加载状态失败:', e);
-      }
-      return { default: [], complete: [], forgotten: [] };
-    }
-
-    function saveState() {
-      localStorage.setItem(STORAGE_KEY, JSON.stringify(state));
-    }
-
-    function createGroupItem(words, originalIndex, isNew = false) {
-      return {
-        words: [...words],
-        revealed: words.map(() => false),
-        originalIndex: originalIndex,
-        isNew: isNew,
-        shuffledOrder: shuffleArray([...Array(words.length).keys()])
-      };
-    }
-
-    function syncWithDefaultGroups() {
-      const defaultKeys = new Set(defaultWordGroups.map(g => generateGroupKey(g)));
-      const topGroups = [];
-      
-      state.complete = state.complete.filter(item => {
-        const key = generateGroupKey(item.words);
-        const exactMatch = defaultKeys.has(key);
-        const hasMatch = defaultWordGroups.some(dg => hasOverlap(item.words, dg));
-        
-        if (!hasMatch) return false;
-        if (!exactMatch && hasMatch) {
-          const newVersion = defaultWordGroups.find(dg => hasOverlap(item.words, dg));
-          if (newVersion) {
-            const idx = defaultWordGroups.indexOf(newVersion);
-            topGroups.push(createGroupItem(newVersion, idx, true));
-          }
-          return false;
-        }
-        item.originalIndex = defaultWordGroups.findIndex(dg => generateGroupKey(dg) === key);
-        return true;
-      });
-      
-      state.forgotten = state.forgotten.filter(item => {
-        const key = generateGroupKey(item.words);
-        const exactMatch = defaultKeys.has(key);
-        const hasMatch = defaultWordGroups.some(dg => hasOverlap(item.words, dg));
-        
-        if (!hasMatch) return false;
-        if (!exactMatch && hasMatch) {
-          const newVersion = defaultWordGroups.find(dg => hasOverlap(item.words, dg));
-          if (newVersion) {
-            const idx = defaultWordGroups.indexOf(newVersion);
-            topGroups.push(createGroupItem(newVersion, idx, true));
-          }
-          return false;
-        }
-        item.originalIndex = defaultWordGroups.findIndex(dg => generateGroupKey(dg) === key);
-        return true;
-      });
-      
-      state.default = state.default.filter(item => {
-        const key = generateGroupKey(item.words);
-        const exactMatch = defaultKeys.has(key);
-        const hasMatch = defaultWordGroups.some(dg => hasOverlap(item.words, dg));
-        
-        if (!hasMatch) return false;
-        if (!exactMatch && hasMatch) {
-          const newVersion = defaultWordGroups.find(dg => hasOverlap(item.words, dg));
-          if (newVersion) {
-            const idx = defaultWordGroups.indexOf(newVersion);
-            topGroups.push(createGroupItem(newVersion, idx, true));
-          }
-          return false;
-        }
-        item.originalIndex = defaultWordGroups.findIndex(dg => generateGroupKey(dg) === key);
-        item.isNew = false;
-        return true;
-      });
-      
-      const allExistingKeys = new Set([
-        ...state.default.map(item => generateGroupKey(item.words)),
-        ...state.complete.map(item => generateGroupKey(item.words)),
-        ...state.forgotten.map(item => generateGroupKey(item.words)),
-        ...topGroups.map(item => generateGroupKey(item.words))
-      ]);
-      
-      for (let i = 0; i < defaultWordGroups.length; i++) {
-        const group = defaultWordGroups[i];
-        const key = generateGroupKey(group);
-        if (!allExistingKeys.has(key)) {
-          const hasOverlapWithExisting = [...state.default, ...state.complete, ...state.forgotten, ...topGroups]
-            .some(item => hasOverlap(item.words, group));
-          
-          if (!hasOverlapWithExisting) {
-            topGroups.push(createGroupItem(group, i, true));
+            const forgetBtn = document.createElement("button");
+            forgetBtn.className = "action-btn forget";
+            forgetBtn.textContent = "忘记";
+            forgetBtn.onclick = () => moveToForgotten(tab, groupIndex);
+            groupDiv.appendChild(forgetBtn);
+          } else if (tab === "complete") {
+            const backBtn = document.createElement("button");
+            backBtn.className = "action-btn forget";
+            backBtn.textContent = "移回待复习";
+            backBtn.onclick = () => moveToDefault(tab, groupIndex);
+            groupDiv.appendChild(backBtn);
+          } else if (tab === "forgotten") {
+            const backBtn = document.createElement("button");
+            backBtn.className = "action-btn complete";
+            backBtn.textContent = "移回待复习";
+            backBtn.onclick = () => moveToDefault(tab, groupIndex);
+            groupDiv.appendChild(backBtn);
           }
         }
+
+        return groupDiv;
       }
-      
-      state.default.sort((a, b) => a.originalIndex - b.originalIndex);
-      topGroups.sort((a, b) => a.originalIndex - b.originalIndex);
-      state.default = [...topGroups, ...state.default];
-      
-      saveState();
-    }
 
-    // ==================== 组操作函数 ====================
+      function renderTab(tab) {
+        const container = document.getElementById(`tab-${tab}`);
+        container.innerHTML = "";
 
-    function hideAllWords() {
-      const activeTab = document.querySelector('.tab-btn.active').dataset.tab;
-      if (activeTab === 'test') return;
-      
-      state[activeTab].forEach(item => {
-        item.revealed = item.words.map(() => false);
-      });
-      saveState();
-      render();
-    }
+        if (state[tab].length === 0) {
+          const empty = document.createElement("div");
+          empty.className = "empty-state";
+          empty.textContent =
+            tab === "default"
+              ? "🎉 没有待复习的单词！"
+              : tab === "complete"
+                ? "还没有已完成的单词组"
+                : "还没有标记为忘记的单词组";
+          container.appendChild(empty);
+          return;
+        }
 
-    function revealWord(tab, groupIndex, wordIndex) {
-      state[tab][groupIndex].revealed[wordIndex] = true;
-      saveState();
-      render();
-    }
-
-    function hideWord(tab, groupIndex, wordIndex) {
-      state[tab][groupIndex].revealed[wordIndex] = false;
-      saveState();
-      render();
-    }
-
-    function moveToComplete(fromTab, groupIndex) {
-      const [item] = state[fromTab].splice(groupIndex, 1);
-      item.revealed = item.words.map(() => false);
-      item.isNew = false;
-      item.shuffledOrder = shuffleArray([...Array(item.words.length).keys()]);
-      state.complete.push(item);
-      state.complete.sort((a, b) => a.originalIndex - b.originalIndex);
-      saveState();
-      render();
-    }
-
-    function moveToForgotten(fromTab, groupIndex) {
-      const [item] = state[fromTab].splice(groupIndex, 1);
-      item.revealed = item.words.map(() => false);
-      item.isNew = false;
-      item.shuffledOrder = shuffleArray([...Array(item.words.length).keys()]);
-      state.forgotten.push(item);
-      state.forgotten.sort((a, b) => a.originalIndex - b.originalIndex);
-      saveState();
-      render();
-    }
-
-    function moveToDefault(fromTab, groupIndex) {
-      const [item] = state[fromTab].splice(groupIndex, 1);
-      item.revealed = item.words.map(() => false);
-      item.isNew = false;
-      item.shuffledOrder = shuffleArray([...Array(item.words.length).keys()]);
-      
-      let insertIndex = state.default.findIndex(g => !g.isNew && g.originalIndex > item.originalIndex);
-      if (insertIndex === -1) {
-        insertIndex = state.default.length;
+        state[tab].forEach((item, index) => {
+          container.appendChild(renderGroup(item, tab, index));
+        });
       }
-      state.default.splice(insertIndex, 0, item);
-      
-      saveState();
-      render();
-    }
 
-    // ==================== 渲染函数 ====================
-
-    function getShuffledOrder(length) {
-      return shuffleArray([...Array(length).keys()]);
-    }
-
-    function renderGroup(item, tab, groupIndex) {
-      const groupDiv = document.createElement('div');
-      groupDiv.className = 'group' + (item.isNew ? ' new-group' : '');
-      
-      const allRevealed = item.revealed.every(r => r);
-      
-      if (!item.shuffledOrder || item.shuffledOrder.length !== item.words.length) {
-        item.shuffledOrder = shuffleArray([...Array(item.words.length).keys()]);
-        saveState();
+      function updateCounts() {
+        document.getElementById("count-default").textContent =
+          state.default.length;
+        document.getElementById("count-complete").textContent =
+          state.complete.length;
+        document.getElementById("count-forgotten").textContent =
+          state.forgotten.length;
       }
-      
-      item.shuffledOrder.forEach(originalIndex => {
-        const word = item.words[originalIndex];
-        const isRevealed = item.revealed[originalIndex];
-        
-        const btn = document.createElement('span');
-        btn.className = 'word-btn ' + (isRevealed ? 'revealed' : 'masked');
-        btn.textContent = isRevealed ? word : '●●●';
-        btn.dataset.tab = tab;
-        btn.dataset.group = groupIndex;
-        btn.dataset.word = originalIndex;
-        
-        btn.onclick = function(e) {
-          if (!isRevealed) {
-            revealWord(tab, groupIndex, originalIndex);
-            setTimeout(() => {
-              const newBtn = document.querySelector(
-                `.word-btn[data-tab="${tab}"][data-group="${groupIndex}"][data-word="${originalIndex}"]`
-              );
-              if (newBtn) selectElementText(newBtn);
-            }, 0);
+
+      function render() {
+        renderTab("default");
+        renderTab("complete");
+        renderTab("forgotten");
+        updateCounts();
+      }
+
+      // ==================== Tab 切换 ====================
+
+      function initTabs() {
+        document.querySelectorAll(".tab-btn").forEach((btn) => {
+          btn.onclick = function () {
+            document
+              .querySelectorAll(".tab-btn")
+              .forEach((b) => b.classList.remove("active"));
+            document
+              .querySelectorAll(".tab-content")
+              .forEach((c) => c.classList.remove("active"));
+
+            this.classList.add("active");
+            document
+              .getElementById(`tab-${this.dataset.tab}`)
+              .classList.add("active");
+          };
+        });
+      }
+
+      // ==================== 单元测试 ====================
+
+      function runTests() {
+        const results = [];
+        let passed = 0;
+        let failed = 0;
+
+        function assert(condition, testName) {
+          if (condition) {
+            results.push({ name: testName, pass: true });
+            passed++;
           } else {
-            selectElementText(btn);
+            results.push({ name: testName, pass: false });
+            failed++;
           }
-        };
-        
-        groupDiv.appendChild(btn);
-      });
-      
-      if (allRevealed) {
-        if (tab === 'default') {
-          const completeBtn = document.createElement('button');
-          completeBtn.className = 'action-btn complete';
-          completeBtn.textContent = '完成';
-          completeBtn.onclick = () => moveToComplete(tab, groupIndex);
-          groupDiv.appendChild(completeBtn);
-          
-          const forgetBtn = document.createElement('button');
-          forgetBtn.className = 'action-btn forget';
-          forgetBtn.textContent = '忘记';
-          forgetBtn.onclick = () => moveToForgotten(tab, groupIndex);
-          groupDiv.appendChild(forgetBtn);
-        } else if (tab === 'complete') {
-          const backBtn = document.createElement('button');
-          backBtn.className = 'action-btn forget';
-          backBtn.textContent = '移回待复习';
-          backBtn.onclick = () => moveToDefault(tab, groupIndex);
-          groupDiv.appendChild(backBtn);
-        } else if (tab === 'forgotten') {
-          const backBtn = document.createElement('button');
-          backBtn.className = 'action-btn complete';
-          backBtn.textContent = '移回待复习';
-          backBtn.onclick = () => moveToDefault(tab, groupIndex);
-          groupDiv.appendChild(backBtn);
         }
-      }
-      
-      return groupDiv;
-    }
 
-    function renderTab(tab) {
-      const container = document.getElementById(`tab-${tab}`);
-      container.innerHTML = '';
-      
-      if (state[tab].length === 0) {
-        const empty = document.createElement('div');
-        empty.className = 'empty-state';
-        empty.textContent = tab === 'default' ? '🎉 没有待复习的单词！' 
-                          : tab === 'complete' ? '还没有已完成的单词组'
-                          : '还没有标记为忘记的单词组';
-        container.appendChild(empty);
-        return;
-      }
-      
-      state[tab].forEach((item, index) => {
-        container.appendChild(renderGroup(item, tab, index));
-      });
-    }
+        // 测试 shuffleArray
+        const arr = [1, 2, 3, 4, 5];
+        const shuffled = shuffleArray(arr);
+        assert(shuffled.length === arr.length, "shuffleArray: 长度保持不变");
+        assert(
+          shuffled.every((x) => arr.includes(x)),
+          "shuffleArray: 包含所有原始元素",
+        );
+        assert(arr.join(",") === "1,2,3,4,5", "shuffleArray: 不修改原数组");
 
-    function updateCounts() {
-      document.getElementById('count-default').textContent = state.default.length;
-      document.getElementById('count-complete').textContent = state.complete.length;
-      document.getElementById('count-forgotten').textContent = state.forgotten.length;
-    }
+        // 测试 generateGroupKey
+        const key1 = generateGroupKey(["apple", "banana"]);
+        const key2 = generateGroupKey(["banana", "apple"]);
+        assert(key1 === key2, "generateGroupKey: 顺序无关");
 
-    function render() {
-      renderTab('default');
-      renderTab('complete');
-      renderTab('forgotten');
-      updateCounts();
-    }
+        const key3 = generateGroupKey(["Apple", "BANANA"]);
+        assert(key1 === key3, "generateGroupKey: 大小写无关");
 
-    // ==================== Tab 切换 ====================
+        // 测试 hasOverlap
+        assert(
+          hasOverlap(["a", "b"], ["b", "c"]),
+          "hasOverlap: 有交集返回 true",
+        );
+        assert(
+          !hasOverlap(["a", "b"], ["c", "d"]),
+          "hasOverlap: 无交集返回 false",
+        );
+        assert(hasOverlap(["A"], ["a"]), "hasOverlap: 大小写无关");
 
-    function initTabs() {
-      document.querySelectorAll('.tab-btn').forEach(btn => {
-        btn.onclick = function() {
-          document.querySelectorAll('.tab-btn').forEach(b => b.classList.remove('active'));
-          document.querySelectorAll('.tab-content').forEach(c => c.classList.remove('active'));
-          
-          this.classList.add('active');
-          document.getElementById(`tab-${this.dataset.tab}`).classList.add('active');
-        };
-      });
-    }
+        // 测试 createGroupItem
+        const item = createGroupItem(["word1", "word2"], 0, false);
+        assert(item.words.length === 2, "createGroupItem: words 长度正确");
+        assert(
+          item.revealed.length === 2,
+          "createGroupItem: revealed 长度正确",
+        );
+        assert(
+          item.revealed.every((r) => r === false),
+          "createGroupItem: revealed 默认为 false",
+        );
+        assert(item.originalIndex === 0, "createGroupItem: originalIndex 正确");
+        assert(item.isNew === false, "createGroupItem: isNew 正确");
+        assert(
+          item.shuffledOrder && item.shuffledOrder.length === 2,
+          "createGroupItem: shuffledOrder 长度正确",
+        );
+        assert(
+          [0, 1].every((x) => item.shuffledOrder.includes(x)),
+          "createGroupItem: shuffledOrder 包含所有索引",
+        );
 
-    // ==================== 单元测试 ====================
+        // 测试 selectElementText
+        const testSpan = document.createElement("span");
+        testSpan.textContent = "test word";
+        document.body.appendChild(testSpan);
+        selectElementText(testSpan);
+        const selection = window.getSelection();
+        assert(
+          selection.toString() === "test word",
+          "selectElementText: 正确选中文本",
+        );
+        document.body.removeChild(testSpan);
+        selection.removeAllRanges();
 
-    function runTests() {
-      const results = [];
-      let passed = 0;
-      let failed = 0;
-      
-      function assert(condition, testName) {
-        if (condition) {
-          results.push({ name: testName, pass: true });
-          passed++;
-        } else {
-          results.push({ name: testName, pass: false });
-          failed++;
+        // 测试 handleSearchInput debounce
+        const originalQuery = searchQuery;
+        handleSearchInput("test");
+        assert(
+          searchQuery === originalQuery,
+          "handleSearchInput: debounce 延迟生效",
+        );
+        searchQuery = originalQuery;
+
+        // 测试 hideAllWords 功能
+        const originalState = JSON.parse(JSON.stringify(state));
+        if (state.default.length > 0) {
+          state.default[0].revealed = state.default[0].words.map(() => true);
+          const activeTab =
+            document.querySelector(".tab-btn.active").dataset.tab;
+          if (activeTab === "default") {
+            hideAllWords();
+            assert(
+              state.default[0].revealed.every((r) => r === false),
+              "hideAllWords: 所有单词被隐藏",
+            );
+          }
         }
-      }
-      
-      // 测试 shuffleArray
-      const arr = [1, 2, 3, 4, 5];
-      const shuffled = shuffleArray(arr);
-      assert(shuffled.length === arr.length, 'shuffleArray: 长度保持不变');
-      assert(shuffled.every(x => arr.includes(x)), 'shuffleArray: 包含所有原始元素');
-      assert(arr.join(',') === '1,2,3,4,5', 'shuffleArray: 不修改原数组');
-      
-      // 测试 generateGroupKey
-      const key1 = generateGroupKey(['apple', 'banana']);
-      const key2 = generateGroupKey(['banana', 'apple']);
-      assert(key1 === key2, 'generateGroupKey: 顺序无关');
-      
-      const key3 = generateGroupKey(['Apple', 'BANANA']);
-      assert(key1 === key3, 'generateGroupKey: 大小写无关');
-      
-      // 测试 hasOverlap
-      assert(hasOverlap(['a', 'b'], ['b', 'c']), 'hasOverlap: 有交集返回 true');
-      assert(!hasOverlap(['a', 'b'], ['c', 'd']), 'hasOverlap: 无交集返回 false');
-      assert(hasOverlap(['A'], ['a']), 'hasOverlap: 大小写无关');
-      
-      // 测试 createGroupItem
-      const item = createGroupItem(['word1', 'word2'], 0, false);
-      assert(item.words.length === 2, 'createGroupItem: words 长度正确');
-      assert(item.revealed.length === 2, 'createGroupItem: revealed 长度正确');
-      assert(item.revealed.every(r => r === false), 'createGroupItem: revealed 默认为 false');
-      assert(item.originalIndex === 0, 'createGroupItem: originalIndex 正确');
-      assert(item.isNew === false, 'createGroupItem: isNew 正确');
-      assert(item.shuffledOrder && item.shuffledOrder.length === 2, 'createGroupItem: shuffledOrder 长度正确');
-      assert([0, 1].every(x => item.shuffledOrder.includes(x)), 'createGroupItem: shuffledOrder 包含所有索引');
-      
-      // 测试 selectElementText
-      const testSpan = document.createElement('span');
-      testSpan.textContent = 'test word';
-      document.body.appendChild(testSpan);
-      selectElementText(testSpan);
-      const selection = window.getSelection();
-      assert(selection.toString() === 'test word', 'selectElementText: 正确选中文本');
-      document.body.removeChild(testSpan);
-      selection.removeAllRanges();
-      
-      // 测试 handleSearchInput debounce
-      const originalQuery = searchQuery;
-      handleSearchInput('test');
-      assert(searchQuery === originalQuery, 'handleSearchInput: debounce 延迟生效');
-      searchQuery = originalQuery;
-      
-      // 测试 hideAllWords 功能
-      const originalState = JSON.parse(JSON.stringify(state));
-      if (state.default.length > 0) {
-        state.default[0].revealed = state.default[0].words.map(() => true);
-        const activeTab = document.querySelector('.tab-btn.active').dataset.tab;
-        if (activeTab === 'default') {
-          hideAllWords();
-          assert(state.default[0].revealed.every(r => r === false), 'hideAllWords: 所有单词被隐藏');
-        }
-      }
-      state = originalState;
-      
-      // 显示结果
-      const resultsDiv = document.getElementById('test-results');
-      resultsDiv.innerHTML = `
+        state = originalState;
+
+        // 显示结果
+        const resultsDiv = document.getElementById("test-results");
+        resultsDiv.innerHTML = `
         <h3>测试结果: ${passed} 通过, ${failed} 失败</h3>
         <ul>
-          ${results.map(r => `
-            <li class="${r.pass ? 'test-pass' : 'test-fail'}">
-              ${r.pass ? '✅' : '❌'} ${r.name}
+          ${results
+            .map(
+              (r) => `
+            <li class="${r.pass ? "test-pass" : "test-fail"}">
+              ${r.pass ? "✅" : "❌"} ${r.name}
             </li>
-          `).join('')}
+          `,
+            )
+            .join("")}
         </ul>
       `;
-      resultsDiv.classList.add('show');
-    }
-
-    // ==================== 初始化 ====================
-
-    function init() {
-      state = loadState();
-      
-      if (state.default.length === 0 && state.complete.length === 0 && state.forgotten.length === 0) {
-        state.default = defaultWordGroups.map((group, index) => createGroupItem(group, index, false));
-        saveState();
+        resultsDiv.classList.add("show");
       }
-      
-      syncWithDefaultGroups();
-      
-      [...state.default, ...state.complete, ...state.forgotten].forEach(item => {
-        const allHidden = item.revealed.every(r => !r);
-        if (allHidden) {
-          item.shuffledOrder = shuffleArray([...Array(item.words.length).keys()]);
-        }
-      });
-      
-      initTabs();
-      render();
-    }
 
-    init();
-  </script>
-</body>
+      // ==================== 初始化 ====================
+
+      function init() {
+        state = loadState();
+
+        if (
+          state.default.length === 0 &&
+          state.complete.length === 0 &&
+          state.forgotten.length === 0
+        ) {
+          state.default = defaultWordGroups.map((group, index) =>
+            createGroupItem(group, index, false),
+          );
+          saveState();
+        }
+
+        syncWithDefaultGroups();
+
+        [...state.default, ...state.complete, ...state.forgotten].forEach(
+          (item) => {
+            const allHidden = item.revealed.every((r) => !r);
+            if (allHidden) {
+              item.shuffledOrder = shuffleArray([
+                ...Array(item.words.length).keys(),
+              ]);
+            }
+          },
+        );
+
+        initTabs();
+        render();
+      }
+
+      init();
+    </script>
+  </body>
 </html>
