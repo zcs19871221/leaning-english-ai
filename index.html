@@ -723,6 +723,13 @@
             }
           };
 
+          // 新增：双击隐藏已展开的单词
+          btn.ondblclick = function (e) {
+            if (isRevealed) {
+              hideWord(tab, groupIndex, originalIndex);
+            }
+          };
+
           groupDiv.appendChild(btn);
         });
 
