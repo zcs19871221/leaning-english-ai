@@ -965,16 +965,17 @@
 
         syncWithDefaultGroups();
 
+        // Refresh-time reshuffle: always randomize order inside every group
+        // across default, complete, and forgotten tabs.
         [...state.default, ...state.complete, ...state.forgotten].forEach(
           (item) => {
-            const allHidden = item.revealed.every((r) => !r);
-            if (allHidden) {
-              item.shuffledOrder = shuffleArray([
-                ...Array(item.words.length).keys(),
-              ]);
-            }
+            item.shuffledOrder = shuffleArray([
+              ...Array(item.words.length).keys(),
+            ]);
           },
         );
+
+        saveState();
 
         initTabs();
         render();
