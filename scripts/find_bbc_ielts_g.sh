@@ -21,10 +21,12 @@ Options:
                               Available: uk,business,world,science,health,politics,education,technology,entertainment,travel,earth
                               Overrides --feeds-preset when provided.
   --min-words N               Minimum article word count. Default: 500
-  --max-words N               Maximum article word count. Default: 1400
-  --min-title-chars N         Minimum title length. Default: 30
-  --min-h2 N                  Minimum meaningful H2 subheadings. Default: 1
+  --max-words N               Maximum article word count. Default: 0 (disabled)
+                              Use 0 for no upper limit.
+  --min-title-chars N         Minimum title length. Default: 0 (disabled)
+  --min-h2 N                  Minimum meaningful H2 subheadings. Default: 0 (disabled)
   --limit N                   Max matched articles to output. Default: 12
+                              Use 0 for no limit (scan all selected feeds).
   --max-items-per-feed N      Max RSS items to scan per feed. Default: 25
   --connect-timeout N         Curl connect timeout seconds. Default: 8
   --timeout N                 Curl timeout seconds. Default: 25
@@ -39,7 +41,7 @@ Examples:
   ./scripts/find_bbc_ielts_g.sh \
     --proxy http://10.190.254.20:80 \
     --topic-preset g_plus_science \
-    --min-words 550 --max-words 1300 --min-title-chars 35 --min-h2 2
+    --min-words 550 --min-title-chars 35 --min-h2 2
 
   ./scripts/find_bbc_ielts_g.sh \
     --topics "jobs,salary,housing,transport,health,climate,wildlife" \
@@ -237,9 +239,9 @@ CUSTOM_TOPICS=""
 FEEDS_PRESET="ielts_focus"
 CUSTOM_FEEDS=""
 MIN_WORDS=500
-MAX_WORDS=1400
-MIN_TITLE_CHARS=30
-MIN_H2=1
+MAX_WORDS=0
+MIN_TITLE_CHARS=0
+MIN_H2=0
 LIMIT=12
 MAX_ITEMS_PER_FEED=25
 CONNECT_TIMEOUT=8
@@ -410,7 +412,9 @@ for key in "${FEED_KEYS[@]}"; do
 
     word_count="$(extract_word_count "$article_block")"
     (( word_count < MIN_WORDS )) && continue
-    (( word_count > MAX_WORDS )) && continue
+    if (( MAX_WORDS > 0 && word_count > MAX_WORDS )); then
+      continue
+    fi
 
     meaningful_h2="$(extract_meaningful_h2 "$article_block")"
     h2_count="$(printf '%s\n' "$meaningful_h2" | sed '/^\s*$/d' | wc -l | tr -d ' ')"
@@ -425,10 +429,14 @@ for key in "${FEED_KEYS[@]}"; do
     stream_write_record "$title" "$word_count" "$h2_count" "$clean_link" "$sample_h2"
 
     matched=$((matched + 1))
-    (( matched >= LIMIT )) && break
+    if (( LIMIT > 0 && matched >= LIMIT )); then
+      break
+    fi
   done < <(printf '%s' "$rss" | extract_rss_items)
 
-  (( matched >= LIMIT )) && break
+  if (( LIMIT > 0 && matched >= LIMIT )); then
+    break
+  fi
 done
 
 if [[ ! -s "$RESULTS_TSV" ]]; then
