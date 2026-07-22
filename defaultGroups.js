@@ -1,4 +1,8 @@
 const defaultWordGroups = [
+  ['scrap', 'scrape', 'scratch'],
+  ['analyses', 'analyse', 'analysis - 发音都不一样', 'analyst'],
+  ['carers','interacting', 'allegedly'],
+  ['represent'],
   ['ethic', 'ethnic', 'epoch'],
   ['director', 'toddler', 'pragmatism', 'direction'],
   ["propose", "suppose"],
@@ -151,7 +155,6 @@ const defaultWordGroups = [
   ['fungus', 'fungi'],
   ['tear - v', 'tear - n', 'torn', 'tore', 'torment', 'torture'],
   ['attribute to', 'be subject to'],
-  ['analyses', 'analyse', 'analysis - 发音都不一样'],
   ['natural','nature'],
   ['economic','economy'],
   ['recipe', 'reception', 'receipt'],
