@@ -49,6 +49,7 @@ Options:
   --min-title-chars N         Minimum title length. Default: 0 (disabled)
   --min-h2 N                  Minimum meaningful H2 subheadings. Default: 0 (disabled)
   --limit N                   Max matched articles to output. Default: 12
+                              Distributed as evenly as possible across selected feeds.
                               Use 0 for no limit (scan all selected feeds).
   --max-items-per-feed N      Max RSS items to scan per feed. Default: 25
   --connect-timeout N         Curl connect timeout seconds. Default: 8
@@ -191,13 +192,20 @@ function extractWordCount(htmlBlock) {
 
 function extractMeaningfulH2(htmlBlock) {
   const out = [];
-  const regex = /<h2\b[^>]*>([\s\S]*?)<\/h2>/gi;
-  let m;
-  while ((m = regex.exec(htmlBlock)) !== null) {
-    const text = compactSpace(decodeHtmlEntities(stripTags(m[1])));
-    if (text.length < 8) continue;
-    if (EXCLUDED_H2.has(text)) continue;
-    out.push(text);
+  const headingPatterns = [
+    /<h2\b[^>]*>([\s\S]*?)<\/h2>/gi,
+    /<([a-z][\w:-]*)\b[^>]*\brole=["']heading["'][^>]*\baria-level=["']2["'][^>]*>([\s\S]*?)<\/\1>/gi,
+    /<([a-z][\w:-]*)\b[^>]*\baria-level=["']2["'][^>]*\brole=["']heading["'][^>]*>([\s\S]*?)<\/\1>/gi,
+  ];
+  for (const regex of headingPatterns) {
+    let m;
+    while ((m = regex.exec(htmlBlock)) !== null) {
+      const rawText = m.length === 2 ? m[1] : m[2];
+      const text = compactSpace(decodeHtmlEntities(stripTags(rawText)));
+      if (text.length < 8) continue;
+      if (EXCLUDED_H2.has(text)) continue;
+      if (!out.includes(text)) out.push(text);
+    }
   }
   return out;
 }
@@ -441,8 +449,18 @@ async function main() {
     await writeChain;
   }
 
+  const baseFeedQuota = cfg.limit > 0 ? Math.floor(cfg.limit / feedKeys.length) : 0;
+  let extraFeedQuotas = cfg.limit > 0 ? cfg.limit % feedKeys.length : 0;
+  let carriedQuota = 0;
+
   for (const key of feedKeys) {
     if (cfg.limit > 0 && matched >= cfg.limit) break;
+
+    const feedQuota = cfg.limit > 0
+      ? baseFeedQuota + (extraFeedQuotas-- > 0 ? 1 : 0) + carriedQuota
+      : 0;
+    carriedQuota = 0;
+    let feedMatched = 0;
 
     if (!cfg.quiet) {
       console.error(`Scanning feed: ${key}`);
@@ -460,7 +478,7 @@ async function main() {
     const items = parseRssItems(rss).slice(0, cfg.maxItemsPerFeed);
 
     await mapLimit(items, cfg.concurrency, async (item) => {
-      if (cfg.limit > 0 && matched >= cfg.limit) return;
+      if (cfg.limit > 0 && (matched >= cfg.limit || feedMatched >= feedQuota)) return;
       if (!item.title || !item.link) return;
       if (item.title.length < cfg.minTitleChars) return;
 
@@ -480,19 +498,28 @@ async function main() {
       if (wordCount < cfg.minWords) return;
       if (cfg.maxWords > 0 && wordCount > cfg.maxWords) return;
 
-      const h2List = extractMeaningfulH2(articleBlock);
+      let h2List = extractMeaningfulH2(articleBlock);
+      // BBC sometimes renders subheadings outside the article element.
+      if (h2List.length < cfg.minH2) {
+        h2List = extractMeaningfulH2(html);
+      }
       const h2Count = h2List.length;
       if (h2Count < cfg.minH2) return;
 
       // Keep matching updates atomic to honor --limit under concurrency.
-      if (cfg.limit > 0 && matched >= cfg.limit) return;
+      if (cfg.limit > 0 && (matched >= cfg.limit || feedMatched >= feedQuota)) return;
       matched += 1;
+      feedMatched += 1;
       if (cfg.limit > 0 && matched > cfg.limit) return;
 
       const sample = h2List.slice(0, 3).join("; ");
       existingOutLinks.add(cleanLink);
       await appendRecord({ title: item.title, words: wordCount, h2: h2Count, link: cleanLink, sample });
     });
+
+    if (cfg.limit > 0 && feedMatched < feedQuota) {
+      carriedQuota = feedQuota - feedMatched;
+    }
   }
 
   if (!records.length) {

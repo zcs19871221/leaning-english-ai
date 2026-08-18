@@ -91,6 +91,11 @@ For IELTS prep, use `ielts_focus` first and add `technology` only when you want 
 - `--out-file PATH`: append output to a file (streaming, dedupe by `LINK`)
 - `--concurrency N`: article fetch concurrency (default: 8)
 
+When `--limit N` is greater than zero, the total output limit is distributed as evenly
+as possible across the selected feeds. If a feed has too few matching articles, its
+unused quota is passed to later feeds. For example, 5 feeds and `--limit 10` starts
+with a target of 2 articles per feed.
+
 When `--out-file` is used, file columns are simplified to:
 - `TITLE`, `WORDS`, `LINK`
 

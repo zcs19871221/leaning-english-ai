@@ -1,0 +1,20 @@
+{
+  "name": "chat",
+  "version": "1.0.0",
+  "description": "",
+  "main": "defaultGroups.js",
+  "scripts": {
+    "test": "echo \"Error: no test specified\" && exit 1",
+    "fetch": "node ./scripts/find_bbc_ielts_g.js --proxy http://10.190.254.20:80 --topic-preset g_plus_science --feeds-preset ielts_focus --min-words 450 --min-h2 1 --limit 0 --concurrency 8 --out-file ./output/bbc_ielts_g.tsv --output tsv"
+  },
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/zcs19871221/leaning-english-ai.git"
+  },
+  "author": "",
+  "license": "ISC",
+  "bugs": {
+    "url": "https://github.com/zcs19871221/leaning-english-ai/issues"
+  },
+  "homepage": "https://github.com/zcs19871221/leaning-english-ai#readme"
+}
