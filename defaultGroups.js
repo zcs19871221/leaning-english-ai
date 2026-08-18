@@ -1,4 +1,6 @@
 const defaultWordGroups = [
+  ["compete", "competitive","competition", "complete", "completion"],
+
   ['scrap', 'scrape', 'scratch'],
   ['analyses', 'analyse', 'analysis - 发音都不一样', 'analyst'],
   ['carers','interacting', 'allegedly'],
@@ -73,7 +75,6 @@ const defaultWordGroups = [
   ['cabin', 'cabinet'],
   ['sightseeing', 'sight', 'sighting'],
   ['encourage', 'matrix', 'secure', 'obsession', 'academy','implement', 'geography', 'geopolitical', 'month'],
-  ["compete", "competitive","competition", "complete", "completion"],
   ["weekend", "weakened","inherit"],
   ["proximity", "approximate"],
 

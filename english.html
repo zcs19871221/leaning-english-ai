@@ -585,16 +585,7 @@
           const group = defaultWordGroups[i];
           const key = generateGroupKey(group);
           if (!allExistingKeys.has(key)) {
-            const hasOverlapWithExisting = [
-              ...state.default,
-              ...state.complete,
-              ...state.forgotten,
-              ...topGroups,
-            ].some((item) => hasOverlap(item.words, group));
-
-            if (!hasOverlapWithExisting) {
-              topGroups.push(createGroupItem(group, i, true));
-            }
+            topGroups.push(createGroupItem(group, i, true));
           }
         }
 

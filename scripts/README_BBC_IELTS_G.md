@@ -25,7 +25,7 @@ node ./scripts/find_bbc_ielts_g.js \
   --topic-preset g_plus_science \
   --feeds-preset ielts_focus \
   --min-words 450 \
-  --min-h2 0 \
+  --min-h2 1 \
   --limit 0 \
   --concurrency 8 \
   --out-file ./output/bbc_ielts_g.tsv \
