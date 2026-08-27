@@ -24,6 +24,12 @@ const EXCLUDED_H2 = new Set([
   "Read more global business stories",
   "More Technology of Business",
 ]);
+const G_READING_EXCLUDED_TITLE_PATTERNS = [
+  /\b(?:dead|death|died|dies|killed|murder|murderer|jailed|warship|airstrike|shooting)\b/i,
+  /\b(?:vigil|farewell|obituary)\b/i,
+  /\b(?:thunderstorm warnings?|weather warnings?|nazi|shipwrecks?)\b/i,
+  /\bdangerous driving videos?\b/i,
+];
 
 function usage() {
   console.log(`Find BBC articles suitable for IELTS General reading practice (Node.js, concurrent fetch).
@@ -34,12 +40,12 @@ Usage:
 Options:
   --proxy URL                 Proxy address, e.g. http://10.190.254.20:80
                               If omitted, no proxy is used.
-  --topic-preset NAME         Topic preset: g_core | g_plus_science | economy_jobs
-                              Default: g_plus_science
+  --topic-preset NAME         Topic preset: g_reading | g_core | g_plus_science | economy_jobs
+                              Default: g_reading
   --topics CSV                Custom topics (comma-separated). Overrides preset.
                               Example: "jobs,housing,cost of living,health"
-  --feeds-preset NAME         Feed preset: ielts_focus | broad_news | all
-                              Default: ielts_focus
+  --feeds-preset NAME         Feed preset: g_reading | ielts_focus | broad_news | all
+                              Default: g_reading
   --feeds CSV                 Feed keys (comma-separated).
                               Available: uk,business,world,science,health,politics,education,technology,entertainment,travel,earth
                               Overrides --feeds-preset when provided.
@@ -65,20 +71,24 @@ Options:
 Examples:
   node ./scripts/find_bbc_ielts_g.js \
     --proxy http://10.190.254.20:80 \
-    --topic-preset g_plus_science \
-    --feeds-preset ielts_focus \
-    --min-words 450 --min-h2 0 --limit 0 \
+    --topic-preset g_reading \
+    --feeds-preset g_reading \
+    --min-words 550 --max-words 1400 --min-h2 0 --limit 0 \
     --out-file ./output/bbc_ielts_g.tsv --output tsv
 `);
 }
 
 function listTopicPresets() {
-  console.log(`g_core:
+  console.log(`g_reading (default):
+    work, housing, consumer services, travel, transport, practical health,
+    public services and practical technology
+
+g_core:
   jobs, employment, salary, wage, housing, rent, mortgage, cost of living,
   inflation, transport, commute, health, school, education, children, family,
   community, public services, energy, water, tax, benefits, law
 
-g_plus_science (default):
+g_plus_science:
   g_core + climate, environment, wildlife, conservation, research, science,
   technology, disease, vaccine
 
@@ -88,7 +98,10 @@ economy_jobs:
 }
 
 function listFeedPresets() {
-  console.log(`ielts_focus (default):
+  console.log(`g_reading (default):
+  uk,business,health,technology,travel
+
+ielts_focus:
   uk,business,world,science,health,education,travel,earth
 
 broad_news:
@@ -100,6 +113,8 @@ all:
 
 function presetTopics(name) {
   switch (name) {
+    case "g_reading":
+      return "jobs,employment,workplace,employee,salary,wage,recruitment,training,apprenticeship,workplace safety,housing,rent,mortgage,accommodation,hotel,booking,holiday,tourism,travel,transport,commute,consumer,shopping,refund,insurance,banking,health,childcare,community,public service,energy,water,benefits,pension,social media,artificial intelligence,online safety";
     case "g_core":
       return "jobs,employment,job,salary,wage,housing,rent,mortgage,cost of living,price,prices,inflation,transport,commute,health,school,education,children,family,community,public service,energy,water,tax,benefit,benefits,law,crime";
     case "g_plus_science":
@@ -113,6 +128,8 @@ function presetTopics(name) {
 
 function presetFeeds(name) {
   switch (name) {
+    case "g_reading":
+      return "uk,business,health,technology,travel";
     case "ielts_focus":
       return "uk,business,world,science,health,education,travel,earth";
     case "broad_news":
@@ -228,9 +245,9 @@ function toInt(value, name) {
 function parseArgs(argv) {
   const cfg = {
     proxy: "",
-    topicPreset: "g_plus_science",
+    topicPreset: "g_reading",
     customTopics: "",
-    feedsPreset: "ielts_focus",
+    feedsPreset: "g_reading",
     customFeeds: "",
     minWords: 500,
     maxWords: 0,
@@ -486,6 +503,9 @@ async function main() {
       if (seenLinks.has(cleanLink)) return;
       seenLinks.add(cleanLink);
       if (existingOutLinks.has(cleanLink)) return;
+
+      if (cfg.topicPreset === "g_reading" && !cfg.customTopics
+        && G_READING_EXCLUDED_TITLE_PATTERNS.some((pattern) => pattern.test(item.title))) return;
 
       const haystack = `${item.title} ${item.desc}`.toLowerCase();
       if (!matchTopics(haystack, topics)) return;

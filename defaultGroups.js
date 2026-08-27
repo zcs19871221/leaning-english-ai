@@ -1,4 +1,5 @@
 const defaultWordGroups = [
+  ["ethic", 'ethnic', 'ethical', 'ethnicity'],
   ["compete", "competitive","competition", "complete", "completion"],
 
   ['scrap', 'scrape', 'scratch'],
