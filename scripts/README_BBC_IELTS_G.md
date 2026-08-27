@@ -32,7 +32,7 @@ node ./scripts/find_bbc_ielts_g.js \
   --topic-preset g_reading \
   --feeds-preset g_reading \
   --min-words 550 \
-  --max-words 1400 \
+  --max-words 2200 \
   --min-h2 0 \
   --min-g-score 6 \
   --limit 0 \
@@ -41,15 +41,16 @@ node ./scripts/find_bbc_ielts_g.js \
   --output tsv
 ```
 
-## Optional science topics
+## Article mix
 
-Including some natural science is useful because:
-- IELTS Listening is shared across modules
-- vocabulary overlap appears in health/environment/public issues
-- mixed-topic reading improves adaptability
+The `g_reading` preset uses two scoring paths:
 
-Use `g_plus_science` when you specifically want this extra variety. The default
-`g_reading` preset stays focused on higher-priority General Training topics.
+- practical GT topics such as work, housing, services, travel and health
+- analytical Section 3 topics such as education, environment, science and society
+
+Practical articles can pass on strong topic relevance. Section 3 articles must also
+show analytical features such as research, data, comparisons or contrasting views.
+This keeps complex reading practice without accepting every education or science story.
 
 ## Presets
 
@@ -66,7 +67,7 @@ node ./scripts/find_bbc_ielts_g.js --list-topic-presets
 
 The default `g_reading` preset scores each fetched article after downloading its
 body. It rewards practical GT topics, guides and rules, analytical reporting, data
-and comparisons. A score of `6` is the normal high-priority threshold:
+and comparisons. A score of `6` is the normal balanced threshold:
 
 - use `--min-g-score 7` for a smaller, stricter list
 - use `--min-g-score 5` if too few articles pass
@@ -82,7 +83,7 @@ If too few articles are returned:
 - title filter is disabled by default (`--min-title-chars 0`)
 - set `--min-title-chars 25` only if you want to remove short headlines
 - word upper bound is disabled by default (`--max-words 0`)
-- set `--max-words 1400` only if you want to exclude very long articles
+- set `--max-words 1400` for shorter practice or `2200` for Section 3 long articles
 - raise `--limit`
 
 If you want to scan all selected feeds without early stop:
@@ -100,14 +101,14 @@ Feed keys:
 - `travel,earth`: official `bbc.com` RSS (`travel/feed.rss`, `future/feed.rss`)
 
 Feed presets:
-- `g_reading` (default): `uk,business,health,technology,travel`
+- `g_reading` (default): `uk,business,health,education,science,technology,travel,earth`
 - `ielts_focus`: `uk,business,world,science,health,education,travel,earth`
 - `broad_news`: `uk,business,world,science,health,education,technology,politics,travel,earth`
 - `all`: all feed keys above
 
-For IELTS General Reading, start with `g_reading`. It avoids dedicated education
-and broad science feeds while retaining practical travel, health and technology.
-It also rejects titles clearly centred on violent crime, deaths, war or obituaries.
+For IELTS General Reading, start with `g_reading`. Education and science articles
+must pass the stricter analytical Section 3 scoring path. Titles clearly centred on
+violent crime, deaths, war or obituaries are rejected.
 
 ## Output formats
 

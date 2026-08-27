@@ -41,36 +41,55 @@ const G_READING_TOPIC_GROUPS = [
   /\b(?:social media|tiktok|online safety|child safety|privacy|artificial intelligence|\bAI\b)\b/i,
 ];
 
+const G_READING_SECTION3_TOPICS = [
+  /\b(?:education|school|pupil|student|teacher|learning|assessment|attainment)\b/i,
+  /\b(?:environment|climate|conservation|pollution|wildlife|ecosystem|sustainability)\b/i,
+  /\b(?:science|research|technology|innovation|behaviour|psychology)\b/i,
+  /\b(?:society|inequality|poverty|population|community|culture|history|archaeology)\b/i,
+];
+
 const G_READING_PRACTICAL_TITLE = /\b(?:how to|what to know|tips?|guide|apply|save|cost|price|fee|bills?|ban|rules?|warning|compensation|pay rise)\b/i;
 const G_READING_ANALYSIS_TEXT = /\b(?:report|study|research|survey|analysis|according to|evidence|figures|data|experts?)\b/i;
 const G_READING_COMPARISON_TEXT = /(?:\b\d+(?:\.\d+)?%|£\s?\d|\bcompared with\b|\bmore than\b|\bless than\b|\bincrease|\bdecrease|\brise|\bfall)/i;
+const G_READING_ARGUMENT_TEXT = /\b(?:however|although|while|whereas|despite|in contrast|on the other hand|argues?|suggests?|claims?)\b/i;
 
 function scoreGReadingArticle(title, description, bodyText) {
-  let score = 0;
+  let practicalScore = 0;
   const matchedGroups = [];
 
   for (let index = 0; index < G_READING_TOPIC_GROUPS.length; index += 1) {
     const pattern = G_READING_TOPIC_GROUPS[index];
     let matched = false;
     if (pattern.test(title)) {
-      score += 4;
+      practicalScore += 4;
       matched = true;
     } else if (pattern.test(description)) {
-      score += 2;
+      practicalScore += 2;
       matched = true;
     }
     if (pattern.test(bodyText)) {
-      score += 1;
+      practicalScore += 1;
       matched = true;
     }
     if (matched) matchedGroups.push(index);
   }
 
-  if (G_READING_PRACTICAL_TITLE.test(title)) score += 2;
-  if (G_READING_ANALYSIS_TEXT.test(bodyText)) score += 1;
-  if (G_READING_COMPARISON_TEXT.test(bodyText)) score += 1;
+  if (G_READING_PRACTICAL_TITLE.test(title)) practicalScore += 2;
+  if (G_READING_ANALYSIS_TEXT.test(bodyText)) practicalScore += 1;
+  if (G_READING_COMPARISON_TEXT.test(bodyText)) practicalScore += 1;
 
-  return { score, matchedGroups };
+  let section3Score = 0;
+  const section3Text = `${title} ${description}`;
+  if (G_READING_SECTION3_TOPICS.some((pattern) => pattern.test(title))) {
+    section3Score += 3;
+  } else if (G_READING_SECTION3_TOPICS.some((pattern) => pattern.test(section3Text))) {
+    section3Score += 2;
+  }
+  if (G_READING_ANALYSIS_TEXT.test(bodyText)) section3Score += 2;
+  if (G_READING_COMPARISON_TEXT.test(bodyText)) section3Score += 1;
+  if (G_READING_ARGUMENT_TEXT.test(bodyText)) section3Score += 1;
+
+  return { score: Math.max(practicalScore, section3Score), practicalScore, section3Score, matchedGroups };
 }
 
 function testGReadingScoring() {
@@ -84,6 +103,16 @@ function testGReadingScoring() {
       title: "Salary information to be shown on job ads",
       body: "A report compared wages across employers and found a 12% difference.",
       accepted: true,
+    },
+    {
+      title: "Education gap widens for disadvantaged pupils",
+      body: "A research report found a 17% rise. However, experts suggested the pattern varied by age.",
+      accepted: true,
+    },
+    {
+      title: "New species found on distant island",
+      body: "Researchers announced the discovery after a field trip.",
+      accepted: false,
     },
     {
       title: "Thunderstorm warnings continue across the UK",
@@ -160,8 +189,8 @@ Examples:
 
 function listTopicPresets() {
   console.log(`g_reading (default):
-    work, housing, consumer services, travel, transport, practical health,
-    public services and practical technology
+  practical GT topics plus analytical education, environment, science and
+  social-issue articles suitable for Section 3
 
 g_core:
   jobs, employment, salary, wage, housing, rent, mortgage, cost of living,
@@ -179,7 +208,7 @@ economy_jobs:
 
 function listFeedPresets() {
   console.log(`g_reading (default):
-  uk,business,health,technology,travel
+  uk,business,health,education,science,technology,travel,earth
 
 ielts_focus:
   uk,business,world,science,health,education,travel,earth
@@ -194,7 +223,7 @@ all:
 function presetTopics(name) {
   switch (name) {
     case "g_reading":
-      return "jobs,employment,workplace,employee,salary,wage,recruitment,training,apprenticeship,workplace safety,housing,rent,mortgage,accommodation,hotel,booking,holiday,tourism,travel,transport,commute,consumer,shopping,refund,insurance,banking,health,childcare,community,public service,energy,water,benefits,pension,social media,artificial intelligence,online safety";
+      return "jobs,employment,workplace,employee,salary,wage,recruitment,training,apprenticeship,workplace safety,housing,rent,mortgage,accommodation,hotel,booking,holiday,tourism,travel,transport,commute,consumer,shopping,refund,insurance,banking,health,childcare,community,public service,energy,water,benefits,pension,social media,artificial intelligence,online safety,education,school,pupil,student,teacher,environment,climate,conservation,pollution,wildlife,science,research,innovation,psychology,inequality,poverty,population,culture,history,archaeology";
     case "g_core":
       return "jobs,employment,job,salary,wage,housing,rent,mortgage,cost of living,price,prices,inflation,transport,commute,health,school,education,children,family,community,public service,energy,water,tax,benefit,benefits,law,crime";
     case "g_plus_science":
@@ -209,7 +238,7 @@ function presetTopics(name) {
 function presetFeeds(name) {
   switch (name) {
     case "g_reading":
-      return "uk,business,health,technology,travel";
+      return "uk,business,health,education,science,technology,travel,earth";
     case "ielts_focus":
       return "uk,business,world,science,health,education,travel,earth";
     case "broad_news":
