@@ -3,6 +3,7 @@
 This script finds BBC articles useful for IELTS General Reading practice, especially
 Section 3 and vocabulary that transfers to Sections 1 and 2:
 - practical topic filtering (work, housing, consumer services, travel, health, etc.)
+- full-article relevance scoring using the title, RSS summary and article body
 - article length filtering (word count)
 - title length filtering
 - subheading filtering (meaningful H2 count)
@@ -33,6 +34,7 @@ node ./scripts/find_bbc_ielts_g.js \
   --min-words 550 \
   --max-words 1400 \
   --min-h2 0 \
+  --min-g-score 6 \
   --limit 0 \
   --concurrency 8 \
   --out-file ./output/bbc_ielts_g.tsv \
@@ -61,6 +63,17 @@ node ./scripts/find_bbc_ielts_g.js --list-topic-presets
 - `economy_jobs`: jobs/economy/finance focus
 
 ## Common Tweaks
+
+The default `g_reading` preset scores each fetched article after downloading its
+body. It rewards practical GT topics, guides and rules, analytical reporting, data
+and comparisons. A score of `6` is the normal high-priority threshold:
+
+- use `--min-g-score 7` for a smaller, stricter list
+- use `--min-g-score 5` if too few articles pass
+- use `--test-g-score` to run the built-in positive and negative examples
+
+The score is bypassed when `--topics` is supplied, so custom topic searches remain
+fully controlled by the caller.
 
 If too few articles are returned:
 - lower `--min-words` (e.g. 450)

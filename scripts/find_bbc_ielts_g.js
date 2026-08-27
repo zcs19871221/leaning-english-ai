@@ -31,6 +31,83 @@ const G_READING_EXCLUDED_TITLE_PATTERNS = [
   /\bdangerous driving videos?\b/i,
 ];
 
+const G_READING_TOPIC_GROUPS = [
+  /\b(?:job|jobs|employment|employee|workplace|salary|salaries|wage|wages|recruitment|training|apprenticeship|pension|maternity leave|night shift)\b/i,
+  /\b(?:housing|rent|rental|mortgage|tenant|landlord|accommodation|household|energy bills?|water bills?)\b/i,
+  /\b(?:consumer|shopping|shop|refund|price|prices|cost of living|banking|bank account|insurance|benefits?|compensation)\b/i,
+  /\b(?:travel|tourism|tourist|traveller|hotel|booking|holiday|airport|flight|transport|commute|rail|train|bus)\b/i,
+  /\b(?:public service|local authority|council|childcare|school meals?|school uniform|social care|NHS)\b/i,
+  /\b(?:health|healthcare|patient|hospital|treatment|screening|mental health|wellbeing|vaccine|vaping|vapes)\b/i,
+  /\b(?:social media|tiktok|online safety|child safety|privacy|artificial intelligence|\bAI\b)\b/i,
+];
+
+const G_READING_PRACTICAL_TITLE = /\b(?:how to|what to know|tips?|guide|apply|save|cost|price|fee|bills?|ban|rules?|warning|compensation|pay rise)\b/i;
+const G_READING_ANALYSIS_TEXT = /\b(?:report|study|research|survey|analysis|according to|evidence|figures|data|experts?)\b/i;
+const G_READING_COMPARISON_TEXT = /(?:\b\d+(?:\.\d+)?%|£\s?\d|\bcompared with\b|\bmore than\b|\bless than\b|\bincrease|\bdecrease|\brise|\bfall)/i;
+
+function scoreGReadingArticle(title, description, bodyText) {
+  let score = 0;
+  const matchedGroups = [];
+
+  for (let index = 0; index < G_READING_TOPIC_GROUPS.length; index += 1) {
+    const pattern = G_READING_TOPIC_GROUPS[index];
+    let matched = false;
+    if (pattern.test(title)) {
+      score += 4;
+      matched = true;
+    } else if (pattern.test(description)) {
+      score += 2;
+      matched = true;
+    }
+    if (pattern.test(bodyText)) {
+      score += 1;
+      matched = true;
+    }
+    if (matched) matchedGroups.push(index);
+  }
+
+  if (G_READING_PRACTICAL_TITLE.test(title)) score += 2;
+  if (G_READING_ANALYSIS_TEXT.test(bodyText)) score += 1;
+  if (G_READING_COMPARISON_TEXT.test(bodyText)) score += 1;
+
+  return { score, matchedGroups };
+}
+
+function testGReadingScoring() {
+  const fixtures = [
+    {
+      title: "Five tips to spruce up your rental",
+      body: "The guide explains how tenants can improve a rental without losing money.",
+      accepted: true,
+    },
+    {
+      title: "Salary information to be shown on job ads",
+      body: "A report compared wages across employers and found a 12% difference.",
+      accepted: true,
+    },
+    {
+      title: "Thunderstorm warnings continue across the UK",
+      body: "Heavy rain is expected overnight in several regions.",
+      accepted: false,
+    },
+    {
+      title: "Warship carries out firing exercise",
+      body: "Officials confirmed the military exercise took place at sea.",
+      accepted: false,
+    },
+  ];
+
+  for (const fixture of fixtures) {
+    const result = scoreGReadingArticle(fixture.title, "", fixture.body);
+    const accepted = result.score >= 6
+      && !G_READING_EXCLUDED_TITLE_PATTERNS.some((pattern) => pattern.test(fixture.title));
+    if (accepted !== fixture.accepted) {
+      throw new Error(`G-reading scoring test failed for ${fixture.title}: ${result.score}`);
+    }
+  }
+  console.log("G-reading scoring tests: OK");
+}
+
 function usage() {
   console.log(`Find BBC articles suitable for IELTS General reading practice (Node.js, concurrent fetch).
 
@@ -54,6 +131,8 @@ Options:
                               Use 0 for no upper limit.
   --min-title-chars N         Minimum title length. Default: 0 (disabled)
   --min-h2 N                  Minimum meaningful H2 subheadings. Default: 0 (disabled)
+  --min-g-score N             Minimum full-article G-reading score. Default: 6
+                              Applies to the default g_reading topic preset only.
   --limit N                   Max matched articles to output. Default: 12
                               Distributed as evenly as possible across selected feeds.
                               Use 0 for no limit (scan all selected feeds).
@@ -66,6 +145,7 @@ Options:
   --quiet                     Suppress progress logs
   --list-topic-presets        Print built-in topic presets and exit
   --list-feed-presets         Print built-in feed presets and exit
+  --test-g-score              Run built-in relevance scoring tests and exit
   --help                      Show this help and exit
 
 Examples:
@@ -194,7 +274,13 @@ function extractArticleBlock(html) {
 }
 
 function extractWordCount(htmlBlock) {
-  const text = compactSpace(
+  const text = extractPlainText(htmlBlock);
+  const words = text.match(/[A-Za-z0-9]+(?:['-][A-Za-z0-9]+)*/g);
+  return words ? words.length : 0;
+}
+
+function extractPlainText(htmlBlock) {
+  return compactSpace(
     decodeHtmlEntities(
       stripTags(
         htmlBlock
@@ -203,8 +289,6 @@ function extractWordCount(htmlBlock) {
       )
     )
   );
-  const words = text.match(/[A-Za-z0-9]+(?:['-][A-Za-z0-9]+)*/g);
-  return words ? words.length : 0;
 }
 
 function extractMeaningfulH2(htmlBlock) {
@@ -253,6 +337,7 @@ function parseArgs(argv) {
     maxWords: 0,
     minTitleChars: 0,
     minH2: 0,
+    minGScore: 6,
     limit: 12,
     maxItemsPerFeed: 25,
     connectTimeout: 8,
@@ -281,6 +366,7 @@ function parseArgs(argv) {
       case "--max-words": cfg.maxWords = toInt(next(), "--max-words"); break;
       case "--min-title-chars": cfg.minTitleChars = toInt(next(), "--min-title-chars"); break;
       case "--min-h2": cfg.minH2 = toInt(next(), "--min-h2"); break;
+      case "--min-g-score": cfg.minGScore = toInt(next(), "--min-g-score"); break;
       case "--limit": cfg.limit = toInt(next(), "--limit"); break;
       case "--max-items-per-feed": cfg.maxItemsPerFeed = toInt(next(), "--max-items-per-feed"); break;
       case "--connect-timeout": cfg.connectTimeout = toInt(next(), "--connect-timeout"); break;
@@ -291,6 +377,7 @@ function parseArgs(argv) {
       case "--quiet": cfg.quiet = true; break;
       case "--list-topic-presets": listTopicPresets(); process.exit(0);
       case "--list-feed-presets": listFeedPresets(); process.exit(0);
+      case "--test-g-score": testGReadingScoring(); process.exit(0);
       case "--help":
       case "-h": usage(); process.exit(0);
       default:
@@ -302,6 +389,7 @@ function parseArgs(argv) {
     throw new Error(`Invalid --output format: ${cfg.outputFormat}`);
   }
   if (cfg.concurrency < 1) throw new Error("--concurrency must be >= 1");
+  if (cfg.minGScore < 0) throw new Error("--min-g-score must be >= 0");
   return cfg;
 }
 
@@ -517,6 +605,11 @@ async function main() {
       const wordCount = extractWordCount(articleBlock);
       if (wordCount < cfg.minWords) return;
       if (cfg.maxWords > 0 && wordCount > cfg.maxWords) return;
+
+      if (cfg.topicPreset === "g_reading" && !cfg.customTopics) {
+        const relevance = scoreGReadingArticle(item.title, item.desc, extractPlainText(articleBlock));
+        if (relevance.score < cfg.minGScore) return;
+      }
 
       let h2List = extractMeaningfulH2(articleBlock);
       // BBC sometimes renders subheadings outside the article element.
