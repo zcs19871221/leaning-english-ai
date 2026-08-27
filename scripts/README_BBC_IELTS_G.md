@@ -37,7 +37,7 @@ node ./scripts/find_bbc_ielts_g.js \
   --min-g-score 6 \
   --limit 0 \
   --concurrency 8 \
-  --out-file ./output/bbc_ielts_g.tsv \
+  --out-file ./output/bbc_ielts_g_scored.tsv \
   --output tsv
 ```
 
@@ -123,7 +123,12 @@ unused quota is passed to later feeds. For example, 5 feeds and `--limit 10` sta
 with a target of 2 articles per feed.
 
 When `--out-file` is used, file columns are simplified to:
-- `TITLE`, `WORDS`, `LINK`
+- `TITLE`, `WORDS`, `CATEGORY`, `G_SCORE`, `MATCH_TYPE`, `LINK`
+
+`MATCH_TYPE` is `practical` for everyday or workplace GT topics and `section3`
+for analytical education, environment, science or social-issue articles. The legacy
+three-column `bbc_ielts_g.tsv` file remains unchanged; the default npm command now
+writes new results to `bbc_ielts_g_scored.tsv`.
 
 If the target file already exists:
 - script appends new rows instead of truncating the file

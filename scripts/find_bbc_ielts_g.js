@@ -40,6 +40,15 @@ const G_READING_TOPIC_GROUPS = [
   /\b(?:health|healthcare|patient|hospital|treatment|screening|mental health|wellbeing|vaccine|vaping|vapes)\b/i,
   /\b(?:social media|tiktok|online safety|child safety|privacy|artificial intelligence|\bAI\b)\b/i,
 ];
+const G_READING_TOPIC_NAMES = [
+  "work",
+  "housing",
+  "consumer",
+  "travel",
+  "public-services",
+  "health",
+  "technology",
+];
 
 const G_READING_SECTION3_TOPICS = [
   /\b(?:education|school|pupil|student|teacher|learning|assessment|attainment)\b/i,
@@ -47,6 +56,7 @@ const G_READING_SECTION3_TOPICS = [
   /\b(?:science|research|technology|innovation|behaviour|psychology)\b/i,
   /\b(?:society|inequality|poverty|population|community|culture|history|archaeology)\b/i,
 ];
+const G_READING_SECTION3_NAMES = ["education", "environment", "science", "society"];
 
 const G_READING_PRACTICAL_TITLE = /\b(?:how to|what to know|tips?|guide|apply|save|cost|price|fee|bills?|ban|rules?|warning|compensation|pay rise)\b/i;
 const G_READING_ANALYSIS_TEXT = /\b(?:report|study|research|survey|analysis|according to|evidence|figures|data|experts?)\b/i;
@@ -56,21 +66,25 @@ const G_READING_ARGUMENT_TEXT = /\b(?:however|although|while|whereas|despite|in 
 function scoreGReadingArticle(title, description, bodyText) {
   let practicalScore = 0;
   const matchedGroups = [];
+  const practicalGroupScores = [];
 
   for (let index = 0; index < G_READING_TOPIC_GROUPS.length; index += 1) {
     const pattern = G_READING_TOPIC_GROUPS[index];
+    let groupScore = 0;
     let matched = false;
     if (pattern.test(title)) {
-      practicalScore += 4;
+      groupScore += 4;
       matched = true;
     } else if (pattern.test(description)) {
-      practicalScore += 2;
+      groupScore += 2;
       matched = true;
     }
     if (pattern.test(bodyText)) {
-      practicalScore += 1;
+      groupScore += 1;
       matched = true;
     }
+    practicalScore += groupScore;
+    practicalGroupScores.push(groupScore);
     if (matched) matchedGroups.push(index);
   }
 
@@ -80,16 +94,30 @@ function scoreGReadingArticle(title, description, bodyText) {
 
   let section3Score = 0;
   const section3Text = `${title} ${description}`;
+  const section3Group = G_READING_SECTION3_TOPICS.findIndex((pattern) => pattern.test(section3Text));
   if (G_READING_SECTION3_TOPICS.some((pattern) => pattern.test(title))) {
     section3Score += 3;
-  } else if (G_READING_SECTION3_TOPICS.some((pattern) => pattern.test(section3Text))) {
+  } else if (section3Group >= 0) {
     section3Score += 2;
   }
   if (G_READING_ANALYSIS_TEXT.test(bodyText)) section3Score += 2;
   if (G_READING_COMPARISON_TEXT.test(bodyText)) section3Score += 1;
   if (G_READING_ARGUMENT_TEXT.test(bodyText)) section3Score += 1;
 
-  return { score: Math.max(practicalScore, section3Score), practicalScore, section3Score, matchedGroups };
+  const strongestPracticalGroup = practicalGroupScores.indexOf(Math.max(...practicalGroupScores));
+  const matchType = practicalScore >= section3Score ? "practical" : "section3";
+  const category = matchType === "practical"
+    ? G_READING_TOPIC_NAMES[strongestPracticalGroup]
+    : G_READING_SECTION3_NAMES[section3Group] || "section3-general";
+
+  return {
+    score: Math.max(practicalScore, section3Score),
+    practicalScore,
+    section3Score,
+    matchType,
+    category,
+    matchedGroups,
+  };
 }
 
 function testGReadingScoring() {
@@ -98,16 +126,19 @@ function testGReadingScoring() {
       title: "Five tips to spruce up your rental",
       body: "The guide explains how tenants can improve a rental without losing money.",
       accepted: true,
+      matchType: "practical",
     },
     {
       title: "Salary information to be shown on job ads",
       body: "A report compared wages across employers and found a 12% difference.",
       accepted: true,
+      matchType: "practical",
     },
     {
       title: "Education gap widens for disadvantaged pupils",
       body: "A research report found a 17% rise. However, experts suggested the pattern varied by age.",
       accepted: true,
+      matchType: "section3",
     },
     {
       title: "New species found on distant island",
@@ -132,6 +163,9 @@ function testGReadingScoring() {
       && !G_READING_EXCLUDED_TITLE_PATTERNS.some((pattern) => pattern.test(fixture.title));
     if (accepted !== fixture.accepted) {
       throw new Error(`G-reading scoring test failed for ${fixture.title}: ${result.score}`);
+    }
+    if (fixture.matchType && result.matchType !== fixture.matchType) {
+      throw new Error(`G-reading classification test failed for ${fixture.title}: ${result.matchType}`);
     }
   }
   console.log("G-reading scoring tests: OK");
@@ -469,13 +503,13 @@ async function mapLimit(items, limit, worker) {
 
 function renderTable(records) {
   const lines = [];
-  lines.push(`${"No.".padEnd(4)} | ${"Words".padEnd(6)} | ${"H2".padEnd(3)} | ${"Title".padEnd(70)}`);
-  lines.push(`${"----"}-+-${"------"}-+-${"---"}-+-${"-".repeat(70)}`);
+  lines.push(`${"No.".padEnd(4)} | ${"Words".padEnd(6)} | ${"Score".padEnd(5)} | ${"Type".padEnd(9)} | ${"Category".padEnd(15)} | ${"Title".padEnd(70)}`);
+  lines.push(`${"----"}-+-${"------"}-+-${"-----"}-+-${"---------"}-+-${"---------------"}-+-${"-".repeat(70)}`);
   let n = 0;
   for (const r of records) {
     n += 1;
     const title = r.title.length > 70 ? `${r.title.slice(0, 67)}...` : r.title;
-    lines.push(`${String(n).padEnd(4)} | ${String(r.words).padEnd(6)} | ${String(r.h2).padEnd(3)} | ${title.padEnd(70)}`);
+    lines.push(`${String(n).padEnd(4)} | ${String(r.words).padEnd(6)} | ${String(r.gScore).padEnd(5)} | ${r.matchType.padEnd(9)} | ${r.category.padEnd(15)} | ${title.padEnd(70)}`);
     lines.push(`      Link: ${r.link}`);
     lines.push(`      H2:   ${r.sample}`);
   }
@@ -539,9 +573,9 @@ async function main() {
           continue;
         }
         if (cfg.outputFormat === "tsv") {
-          const cols = line.split("\t");
-          if (cols.length >= 3) {
-            const link = cols[2].trim();
+            const cols = line.split("\t");
+            if (cols.length >= 3) {
+              const link = cols[cols.length - 1].trim();
             if (link) existingOutLinks.add(link);
           }
         } else {
@@ -551,7 +585,7 @@ async function main() {
       }
     } else {
       const header = cfg.outputFormat === "tsv"
-        ? "TITLE\tWORDS\tLINK\n"
+        ? "TITLE\tWORDS\tCATEGORY\tG_SCORE\tMATCH_TYPE\tLINK\n"
         : [
             "Streaming BBC IELTS-G results...",
             `${"No.".padEnd(4)} | ${"Words".padEnd(6)} | ${"Title".padEnd(70)}`,
@@ -568,7 +602,7 @@ async function main() {
 
     writeChain = writeChain.then(async () => {
       if (cfg.outputFormat === "tsv") {
-        const row = `${record.title}\t${record.words}\t${record.link}\n`;
+        const row = `${record.title}\t${record.words}\t${record.category}\t${record.gScore}\t${record.matchType}\t${record.link}\n`;
         await fsp.appendFile(outFile, row, "utf8");
       } else {
         const i = records.length;
@@ -631,12 +665,18 @@ async function main() {
       if (!html) return;
 
       const articleBlock = extractArticleBlock(html);
+      const articleText = extractPlainText(articleBlock);
       const wordCount = extractWordCount(articleBlock);
       if (wordCount < cfg.minWords) return;
       if (cfg.maxWords > 0 && wordCount > cfg.maxWords) return;
 
+      let relevance = {
+        score: 0,
+        category: "custom",
+        matchType: "custom",
+      };
       if (cfg.topicPreset === "g_reading" && !cfg.customTopics) {
-        const relevance = scoreGReadingArticle(item.title, item.desc, extractPlainText(articleBlock));
+        relevance = scoreGReadingArticle(item.title, item.desc, articleText);
         if (relevance.score < cfg.minGScore) return;
       }
 
@@ -656,7 +696,16 @@ async function main() {
 
       const sample = h2List.slice(0, 3).join("; ");
       existingOutLinks.add(cleanLink);
-      await appendRecord({ title: item.title, words: wordCount, h2: h2Count, link: cleanLink, sample });
+      await appendRecord({
+        title: item.title,
+        words: wordCount,
+        category: relevance.category,
+        gScore: relevance.score,
+        matchType: relevance.matchType,
+        h2: h2Count,
+        link: cleanLink,
+        sample,
+      });
     });
 
     if (cfg.limit > 0 && feedMatched < feedQuota) {
@@ -677,9 +726,9 @@ async function main() {
   }
 
   if (cfg.outputFormat === "tsv") {
-    console.log("TITLE\tWORDS\tH2_COUNT\tLINK\tH2_SAMPLE");
+    console.log("TITLE\tWORDS\tCATEGORY\tG_SCORE\tMATCH_TYPE\tH2_COUNT\tLINK\tH2_SAMPLE");
     for (const r of records) {
-      console.log(`${r.title}\t${r.words}\t${r.h2}\t${r.link}\t${r.sample}`);
+      console.log(`${r.title}\t${r.words}\t${r.category}\t${r.gScore}\t${r.matchType}\t${r.h2}\t${r.link}\t${r.sample}`);
     }
   } else {
     console.log(renderTable(records));
